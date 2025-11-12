@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+.venv/
+build/
+dist/
+.eggs/
+*.egg-info/
+
+# VS Code
+.vscode/
+
+# Jupyter
+
+# Project folders
+examples/
+tests/
+
+# IDEs
+.idea/
+.spyderproject
+.spyproject
+
+# Coverage
+.coverage
+coverage.xml
+htmlcov/
+
+# Logs
+*.log
+*.out
+*.err
+
+# SQLite
+*.sqlite3
+
+.ipynb_checkpoints/
+
+
+# OS
+.DS_Store
+
+Thumbs.db
+
+# Test, coverage, and logs
+
+.coverage
+
+# Others
+*.bak
+*.swp
