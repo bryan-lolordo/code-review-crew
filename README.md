@@ -380,13 +380,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Streamlit** - Beautiful web interfaces for ML/AI apps
 - **OpenAI** - GPT-4 for intelligent code analysis
 
----
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/yourusername/code-review-crew/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/code-review-crew/discussions)
-- **Email**: your.email@example.com
 
 ---
 
@@ -401,9 +394,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [ ] Team collaboration features
 - [ ] Configurable agent personas
 - [ ] Performance benchmarking dashboard
-
----
-
-**Built with ❤️ by [Your Name]**
-
-*Making code review intelligent, automated, and actually useful.*
