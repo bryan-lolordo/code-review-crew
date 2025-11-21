@@ -1,32 +1,87 @@
-# Core dependencies
+# ============================================================================
+# Code Review Crew - Requirements
+# Multi-agent code analysis with AutoGen + LangGraph
+# ============================================================================
+
+# ============================================================================
+# Core AI Frameworks
+# ============================================================================
+
+# AutoGen - Multi-agent framework
 pyautogen>=0.2.0
+
+# LangGraph - State machine workflow (NEW)
+langgraph>=0.0.40
+langchain>=0.1.0
+langchain-openai>=0.0.5
+langchain-core>=0.1.0
+
+# OpenAI API
 openai>=1.0.0
+
+# Environment variables
 python-dotenv>=1.0.0
 
-# Web interface
+# ============================================================================
+# Web Interface
+# ============================================================================
+
 streamlit>=1.28.0
 
-# Static analysis tools
+# ============================================================================
+# Static Analysis Tools
+# ============================================================================
+
+# Linting
 pylint>=3.0.0
 pycodestyle>=2.11.0
 flake8>=6.1.0
+
+# Security scanning
 bandit>=1.7.5
+
+# Complexity analysis
 radon>=6.0.1
 
-# Testing tools
+# ============================================================================
+# Testing Tools
+# ============================================================================
+
 pytest>=7.4.0
 pytest-cov>=4.1.0
 pytest-asyncio>=0.21.0
 pytest-json-report>=1.5.0
 
-# Code execution (optional - for sandbox)
-docker>=7.0.0
+# ============================================================================
+# Code Execution (Optional - requires Docker)
+# ============================================================================
 
+# docker>=7.0.0  # Uncomment if you want Docker support
+
+# ============================================================================
 # Utilities
+# ============================================================================
+
 typing-extensions>=4.8.0
 pydantic>=2.0.0
 
-# Development dependencies (optional)
-black>=23.0.0
-isort>=5.12.0
-mypy>=1.5.0
+# ============================================================================
+# Development Tools (Optional)
+# ============================================================================
+
+# Code formatting
+# black>=23.0.0
+# isort>=5.12.0
+
+# Type checking
+# mypy>=1.5.0
+
+# ============================================================================
+# Additional Dependencies
+# ============================================================================
+
+# For better error messages
+rich>=13.0.0
+
+# For JSON handling
+orjson>=3.9.0
