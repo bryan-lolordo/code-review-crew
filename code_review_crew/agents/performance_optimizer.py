@@ -1,24 +1,22 @@
 """
 Performance Optimizer Agent
 
-Specialized agent for analyzing code performance and suggesting optimizations.
-Uses complexity analysis tools to identify bottlenecks.
+Specialized agent for analyzing performance and optimization opportunities.
 """
 
 import autogen
-from typing import Dict, List, Optional
+import re
+from typing import Dict, List
 from .base_agent import BaseAgent
 
 
 class PerformanceOptimizer(BaseAgent):
     """
     Performance Optimizer agent specializing in:
-    - Algorithmic complexity (Big O analysis)
-    - Memory usage optimization
-    - Database query efficiency
-    - Loop optimization
+    - Algorithmic complexity analysis
+    - Performance bottlenecks
+    - Memory optimization
     - Caching opportunities
-    - Profiling insights
     """
     
     def __init__(self, llm_config: Dict, tools: Dict):
@@ -27,42 +25,35 @@ class PerformanceOptimizer(BaseAgent):
         
         Args:
             llm_config: LLM configuration dictionary
-            tools: Dictionary of tool instances (complexity_analyzer, etc.)
+            tools: Dictionary of tool instances
         """
         self.tools = tools
         self.llm_config = llm_config
         
         system_message = """
-        You are a Performance Optimizer specializing in code efficiency.
+        You are a Performance Optimizer specializing in code performance analysis.
         
         Your responsibilities:
-        1. Analyze algorithmic complexity (time and space)
+        1. Analyze algorithmic complexity (Big O)
         2. Identify performance bottlenecks
         3. Suggest optimization strategies
-        4. Review database query efficiency
+        4. Review memory usage
         5. Identify caching opportunities
-        6. Detect memory leaks
-        7. Optimize loops and iterations
+        6. Detect inefficient patterns
         
-        Use the available tools:
-        - analyze_complexity: Calculate cyclomatic and time complexity
-        - find_bottlenecks: Identify performance bottlenecks
-        - profile_code: Get profiling insights
+        Use available tools:
+        - analyze_complexity: Calculate cyclomatic complexity
+        - find_bottlenecks: Identify performance issues
+        - detect_nested_loops: Find O(n²) or worse complexity
         
-        For each performance issue:
-        - Explain the current complexity (e.g., O(n²))
-        - Describe why it's a bottleneck
-        - Suggest optimized approach with complexity (e.g., O(n))
-        - Provide code example of optimization
-        - Balance performance with readability
+        Provide complexity analysis (O(n), O(n²), etc.).
+        Balance performance with readability.
         
-        Prioritize issues by impact:
-        - Critical: O(n³) or worse, memory leaks
-        - High: O(n²) in hot paths
-        - Medium: Inefficient but acceptable
-        - Low: Micro-optimizations
-        
-        Always consider real-world impact, not just theoretical complexity.
+        When reporting issues:
+        - Current complexity
+        - Suggested optimization
+        - Expected improvement
+        - Code example
         """
         
         self.agent = autogen.AssistantAgent(
@@ -80,208 +71,162 @@ class PerformanceOptimizer(BaseAgent):
         function_map = {
             "analyze_complexity": self.tools['complexity'].calculate_complexity,
             "find_bottlenecks": self.tools['complexity'].find_bottlenecks,
-            "detect_inefficiencies": self.detect_inefficiencies,
+            "detect_nested_loops": self.detect_nested_loops,
         }
         return function_map
     
-    def detect_inefficiencies(self, code: str) -> Dict:
+    def detect_nested_loops(self, code: str) -> List[Dict]:
         """
-        Detect common performance inefficiencies
+        Detect nested loops which often indicate O(n²) or worse complexity
         
         Args:
             code: Python source code to analyze
         
         Returns:
-            Dictionary of detected inefficiencies
+            List of nested loop issues
         """
-        inefficiencies = {
-            'nested_loops': self._check_nested_loops(code),
-            'string_concat': self._check_string_concatenation(code),
-            'repeated_work': self._check_repeated_work(code),
-            'inefficient_data_structures': self._check_data_structures(code),
-            'no_caching': self._check_caching_opportunities(code)
-        }
-        
-        return {
-            'total_issues': sum(len(v) for v in inefficiencies.values()),
-            'inefficiencies': inefficiencies
-        }
-    
-    def _check_nested_loops(self, code: str) -> List[Dict]:
-        """Check for nested loops that might be O(n²) or worse"""
         issues = []
         lines = code.split('\n')
         
-        loop_depth = 0
-        loop_stack = []
+        loop_stack = []  # Track nested loop depth
         
-        for line_num, line in enumerate(lines, 1):
+        for i, line in enumerate(lines, 1):
             stripped = line.strip()
+            indent = len(line) - len(line.lstrip())
             
             # Detect loop start
             if stripped.startswith('for ') or stripped.startswith('while '):
-                loop_depth += 1
-                loop_stack.append(line_num)
+                loop_stack.append({'line': i, 'indent': indent, 'type': stripped.split()[0]})
                 
-                if loop_depth >= 2:
+                # Check if nested (2+ loops deep)
+                if len(loop_stack) >= 2:
                     issues.append({
-                        'line': line_num,
-                        'depth': loop_depth,
-                        'severity': 'High' if loop_depth == 2 else 'Critical',
-                        'description': f'Nested loop (depth {loop_depth}) - potential O(n^{loop_depth}) complexity',
-                        'suggestion': 'Consider using hash maps, sets, or preprocessing to reduce complexity'
+                        'line': i,
+                        'depth': len(loop_stack),
+                        'severity': 'HIGH' if len(loop_stack) == 2 else 'CRITICAL',
+                        'description': f'Nested loop (depth {len(loop_stack)}) - Likely O(n^{len(loop_stack)}) complexity',
+                        'suggestion': 'Consider using hash maps, sets, or other data structures for O(n) complexity'
                     })
             
-            # Detect loop end (simplified - doesn't handle all cases)
-            if loop_depth > 0 and not line.startswith(' ' * (loop_depth * 4)):
-                if loop_stack:
+            # Pop loops when indent decreases
+            if loop_stack and indent <= loop_stack[-1]['indent'] and not stripped.startswith(('for ', 'while ')):
+                while loop_stack and indent <= loop_stack[-1]['indent']:
                     loop_stack.pop()
-                    loop_depth -= 1
         
         return issues
     
-    def _check_string_concatenation(self, code: str) -> List[Dict]:
-        """Check for inefficient string concatenation in loops"""
-        issues = []
-        lines = code.split('\n')
-        
-        in_loop = False
-        for line_num, line in enumerate(lines, 1):
-            stripped = line.strip()
-            
-            if stripped.startswith('for ') or stripped.startswith('while '):
-                in_loop = True
-            
-            if in_loop and '+=' in line and ('str' in line or '"' in line or "'" in line):
-                issues.append({
-                    'line': line_num,
-                    'severity': 'Medium',
-                    'description': 'String concatenation in loop - O(n²) with string copying',
-                    'suggestion': 'Use list.append() and "".join() instead',
-                    'example': "result = []; result.append(item); ''.join(result)"
-                })
-        
-        return issues
-    
-    def _check_repeated_work(self, code: str) -> List[Dict]:
-        """Check for repeated calculations or database calls"""
-        issues = []
-        lines = code.split('\n')
-        
-        # Check for repeated function calls in loops
-        in_loop = False
-        for line_num, line in enumerate(lines, 1):
-            stripped = line.strip()
-            
-            if stripped.startswith('for ') or stripped.startswith('while '):
-                in_loop = True
-            
-            if in_loop and any(x in line for x in ['get_', 'fetch_', 'query_', 'load_']):
-                issues.append({
-                    'line': line_num,
-                    'severity': 'High',
-                    'description': 'Potential repeated database/network calls in loop',
-                    'suggestion': 'Batch requests or cache results outside the loop'
-                })
-        
-        return issues
-    
-    def _check_data_structures(self, code: str) -> List[Dict]:
-        """Check for inefficient data structure usage"""
-        issues = []
-        lines = code.split('\n')
-        
-        for line_num, line in enumerate(lines, 1):
-            # Check for 'in list' checks
-            if ' in ' in line and 'if ' in line and '[' in line:
-                issues.append({
-                    'line': line_num,
-                    'severity': 'Medium',
-                    'description': 'Using "in" operator with list - O(n) lookup',
-                    'suggestion': 'Consider using set for O(1) membership testing'
-                })
-        
-        return issues
-    
-    def _check_caching_opportunities(self, code: str) -> List[Dict]:
-        """Identify opportunities for caching/memoization"""
-        issues = []
-        
-        # Check for recursive functions without memoization
-        if 'def ' in code and 'return ' in code:
-            lines = code.split('\n')
-            for line_num, line in enumerate(lines, 1):
-                if 'def ' in line:
-                    func_name = line.split('def ')[1].split('(')[0]
-                    # Check if function calls itself
-                    if func_name in code[code.index(line):]:
-                        issues.append({
-                            'line': line_num,
-                            'function': func_name,
-                            'severity': 'Medium',
-                            'description': 'Recursive function without memoization',
-                            'suggestion': 'Add @functools.lru_cache decorator'
-                        })
-                        break
-        
-        return issues
-    
-    def suggest_optimizations(self, code: str, bottlenecks: List[Dict]) -> List[Dict]:
+    def detect_string_concatenation(self, code: str) -> List[Dict]:
         """
-        Generate specific optimization suggestions
-        
-        Args:
-            code: Original code
-            bottlenecks: List of identified bottlenecks
-        
-        Returns:
-            List of optimization suggestions with code examples
-        """
-        suggestions = []
-        
-        for bottleneck in bottlenecks:
-            if 'nested_loops' in bottleneck.get('type', ''):
-                suggestions.append({
-                    'issue': bottleneck,
-                    'optimization': 'Use hash map for O(1) lookups',
-                    'example': """
-# Instead of:
-for item1 in list1:
-    for item2 in list2:
-        if item1 == item2:
-            # process
-            
-# Use:
-set2 = set(list2)
-for item1 in list1:
-    if item1 in set2:  # O(1) lookup
-        # process
-"""
-                })
-        
-        return suggestions
-    
-    def analyze(self, code: str) -> Dict:
-        """
-        High-level performance analysis function
+        Detect inefficient string concatenation in loops
         
         Args:
             code: Python source code to analyze
         
         Returns:
-            Comprehensive performance analysis results
+            List of string concatenation issues
+        """
+        issues = []
+        lines = code.split('\n')
+        
+        in_loop = False
+        loop_indent = 0
+        
+        for i, line in enumerate(lines, 1):
+            stripped = line.strip()
+            indent = len(line) - len(line.lstrip())
+            
+            # Track if we're in a loop
+            if stripped.startswith('for ') or stripped.startswith('while '):
+                in_loop = True
+                loop_indent = indent
+            elif in_loop and indent <= loop_indent:
+                in_loop = False
+            
+            # Check for string concatenation in loop
+            if in_loop and ('+=' in stripped or '= ' in stripped and '+' in stripped):
+                if any(var in stripped for var in ['str', 'text', 'result', 'output']):
+                    issues.append({
+                        'line': i,
+                        'severity': 'MEDIUM',
+                        'description': 'String concatenation in loop - Inefficient for large iterations',
+                        'suggestion': 'Use list.append() and join(), or StringIO for better performance'
+                    })
+        
+        return issues
+    
+    def detect_repeated_calculations(self, code: str) -> List[Dict]:
+        """
+        Detect calculations that could be cached
+        
+        Args:
+            code: Python source code to analyze
+        
+        Returns:
+            List of caching opportunities
+        """
+        issues = []
+        lines = code.split('\n')
+        
+        # Look for function calls in loops
+        in_loop = False
+        loop_line = 0
+        function_calls = {}
+        
+        for i, line in enumerate(lines, 1):
+            stripped = line.strip()
+            
+            if stripped.startswith('for ') or stripped.startswith('while '):
+                in_loop = True
+                loop_line = i
+                function_calls = {}
+            elif in_loop and not line.startswith(' '):
+                in_loop = False
+            
+            # Look for function calls
+            if in_loop:
+                # Simple pattern for function calls
+                matches = re.findall(r'(\w+)\(', stripped)
+                for func in matches:
+                    if func not in ['range', 'len', 'print', 'str', 'int', 'float']:
+                        if func in function_calls:
+                            function_calls[func] += 1
+                        else:
+                            function_calls[func] = 1
+        
+        # Report functions called multiple times
+        for func, count in function_calls.items():
+            if count > 1:
+                issues.append({
+                    'line': loop_line,
+                    'severity': 'MEDIUM',
+                    'description': f'Function {func}() called {count} times in loop',
+                    'suggestion': 'Consider caching the result if the function is expensive'
+                })
+        
+        return issues[:3]  # Limit to top 3
+    
+    def analyze(self, code: str) -> Dict:
+        """
+        Comprehensive performance analysis
+        
+        Args:
+            code: Python source code to analyze
+        
+        Returns:
+            Performance analysis results
         """
         results = {
-            'complexity_analysis': self.tools['complexity'].calculate_complexity(code),
-            'bottlenecks': self.tools['complexity'].find_bottlenecks(code),
-            'inefficiencies': self.detect_inefficiencies(code)
+            'nested_loops': self.detect_nested_loops(code),
+            'string_concat': self.detect_string_concatenation(code),
+            'caching_opportunities': self.detect_repeated_calculations(code),
+            'complexity_metrics': self.tools['complexity'].calculate_complexity(code),
+            'total_issues': 0
         }
         
-        # Add optimization suggestions
-        if results['bottlenecks']:
-            results['suggestions'] = self.suggest_optimizations(
-                code, 
-                results['bottlenecks']
-            )
+        results['total_issues'] = (
+            len(results['nested_loops']) +
+            len(results['string_concat']) +
+            len(results['caching_opportunities'])
+        )
         
         return results

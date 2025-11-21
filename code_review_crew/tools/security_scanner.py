@@ -1,8 +1,7 @@
 """
 Security Scanner Tool
 
-Wrapper for Bandit security analysis tool.
-Identifies security vulnerabilities and risks in Python code.
+Wrapper for Bandit security scanner to identify security vulnerabilities in Python code.
 """
 
 import subprocess
@@ -13,32 +12,56 @@ from typing import Dict, List
 
 
 class SecurityScanner:
-    """Wrapper for Bandit security scanner"""
+    """
+    Security scanner tool using Bandit
+    
+    Detects:
+    - SQL injection
+    - Hardcoded passwords
+    - Weak cryptography
+    - Shell injection
+    - Assert usage
+    - Insecure functions
+    """
     
     def __init__(self):
-        self.temp_dir = tempfile.gettempdir()
+        """Initialize the security scanner"""
+        self.bandit_available = self._check_bandit_available()
+    
+    def _check_bandit_available(self) -> bool:
+        """Check if Bandit is installed"""
+        try:
+            result = subprocess.run(
+                ["bandit", "--version"],
+                capture_output=True,
+                timeout=5
+            )
+            return result.returncode == 0
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            return False
     
     def run_bandit(self, code: str) -> Dict:
         """
-        Scan code for security vulnerabilities using Bandit
+        Run Bandit security scanner on code
         
         Args:
             code: Python source code to scan
         
         Returns:
-            {
-                'high_severity': [...],
-                'medium_severity': [...],
-                'low_severity': [...],
-                'total_issues': int,
-                'confidence_scores': {...},
-                'summary': str
-            }
+            Dictionary containing security scan results
         """
+        if not self.bandit_available:
+            return {
+                'available': False,
+                'message': 'Bandit not installed. Install with: pip install bandit',
+                'issues': [],
+                'severity_counts': {}
+            }
+        
         # Write code to temporary file
-        temp_file = os.path.join(self.temp_dir, 'temp_code.py')
-        with open(temp_file, 'w') as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
             f.write(code)
+            temp_file = f.name
         
         try:
             # Run Bandit with JSON output
@@ -50,114 +73,100 @@ class SecurityScanner:
             )
             
             # Parse JSON output
-            report = {}
             if result.stdout:
-                try:
-                    report = json.loads(result.stdout)
-                except json.JSONDecodeError:
-                    pass
-            
-            # Categorize issues by severity
-            categorized = self._categorize_issues(report.get('results', []))
-            
-            # Generate summary
-            summary = self._generate_security_summary(categorized)
-            
-            return {
-                'high_severity': categorized['high'],
-                'medium_severity': categorized['medium'],
-                'low_severity': categorized['low'],
-                'total_issues': len(report.get('results', [])),
-                'summary': summary,
-                'metrics': report.get('metrics', {})
-            }
+                output = json.loads(result.stdout)
+                issues = self._parse_bandit_output(output)
+                
+                return {
+                    'available': True,
+                    'total_issues': len(issues),
+                    'issues': issues,
+                    'severity_counts': self._count_severity(issues),
+                    'raw_output': output
+                }
+            else:
+                return {
+                    'available': True,
+                    'total_issues': 0,
+                    'issues': [],
+                    'severity_counts': {},
+                    'message': 'No issues found'
+                }
         
         except subprocess.TimeoutExpired:
             return {
-                'high_severity': [],
-                'medium_severity': [],
-                'low_severity': [],
-                'total_issues': 0,
-                'summary': 'Security scan timed out',
-                'error': 'Timeout'
+                'available': True,
+                'error': 'Bandit scan timed out',
+                'issues': [],
+                'severity_counts': {}
             }
-        except FileNotFoundError:
+        
+        except json.JSONDecodeError as e:
             return {
-                'high_severity': [],
-                'medium_severity': [],
-                'low_severity': [],
-                'total_issues': 0,
-                'summary': 'Bandit not installed',
-                'error': 'Bandit not found'
+                'available': True,
+                'error': f'Failed to parse Bandit output: {e}',
+                'issues': [],
+                'severity_counts': {}
             }
+        
         except Exception as e:
             return {
-                'high_severity': [],
-                'medium_severity': [],
-                'low_severity': [],
-                'total_issues': 0,
-                'summary': f'Security scan error: {str(e)}',
-                'error': str(e)
+                'available': True,
+                'error': str(e),
+                'issues': [],
+                'severity_counts': {}
             }
+        
         finally:
+            # Cleanup temp file
             if os.path.exists(temp_file):
                 os.remove(temp_file)
     
-    def _categorize_issues(self, issues: List[Dict]) -> Dict:
-        """Categorize issues by severity"""
-        categorized = {
-            'high': [],
-            'medium': [],
-            'low': []
-        }
+    def _parse_bandit_output(self, output: Dict) -> List[Dict]:
+        """
+        Parse Bandit JSON output into structured issues
+        
+        Args:
+            output: Bandit JSON output
+        
+        Returns:
+            List of security issues
+        """
+        issues = []
+        
+        for result in output.get('results', []):
+            issues.append({
+                'line': result.get('line_number'),
+                'severity': result.get('issue_severity'),
+                'confidence': result.get('issue_confidence'),
+                'type': result.get('test_name'),
+                'description': result.get('issue_text'),
+                'code': result.get('code', '').strip(),
+                'cwe': result.get('issue_cwe', {}).get('id') if result.get('issue_cwe') else None
+            })
+        
+        return issues
+    
+    def _count_severity(self, issues: List[Dict]) -> Dict:
+        """
+        Count issues by severity level
+        
+        Args:
+            issues: List of security issues
+        
+        Returns:
+            Dictionary with severity counts
+        """
+        counts = {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
         
         for issue in issues:
-            severity = issue.get('issue_severity', 'MEDIUM').lower()
-            
-            formatted_issue = {
-                'test_id': issue.get('test_id', ''),
-                'test_name': issue.get('test_name', ''),
-                'line_number': issue.get('line_number', 0),
-                'line_range': issue.get('line_range', []),
-                'code': issue.get('code', ''),
-                'issue_text': issue.get('issue_text', ''),
-                'issue_severity': severity.upper(),
-                'issue_confidence': issue.get('issue_confidence', 'MEDIUM'),
-                'more_info': issue.get('more_info', '')
-            }
-            
-            if severity == 'high':
-                categorized['high'].append(formatted_issue)
-            elif severity == 'medium':
-                categorized['medium'].append(formatted_issue)
-            else:
-                categorized['low'].append(formatted_issue)
+            severity = issue.get('severity', 'MEDIUM')
+            if severity in counts:
+                counts[severity] += 1
         
-        return categorized
+        return counts
     
-    def _generate_security_summary(self, categorized: Dict) -> str:
-        """Generate human-readable security summary"""
-        high_count = len(categorized['high'])
-        medium_count = len(categorized['medium'])
-        low_count = len(categorized['low'])
-        
-        if high_count == 0 and medium_count == 0 and low_count == 0:
-            return "No security issues detected."
-        
-        summary = "Security scan complete. "
-        
-        if high_count > 0:
-            summary += f"Found {high_count} HIGH severity issues (immediate action required). "
-        
-        if medium_count > 0:
-            summary += f"{medium_count} MEDIUM severity issues detected. "
-        
-        if low_count > 0:
-            summary += f"{low_count} LOW severity issues found."
-        
-        return summary
-    
-    def check_owasp_top10(self, code: str) -> List[str]:
+    def check_owasp_top10(self, code: str) -> Dict:
         """
         Check for OWASP Top 10 vulnerabilities
         
@@ -165,153 +174,106 @@ class SecurityScanner:
             code: Python source code to check
         
         Returns:
-            List of OWASP categories with vulnerabilities found
+            Dictionary of OWASP Top 10 findings
         """
-        vulnerabilities = []
+        # Run Bandit and map to OWASP categories
+        bandit_results = self.run_bandit(code)
         
-        # A01:2021 - Broken Access Control
-        if self._check_broken_access_control(code):
-            vulnerabilities.append('A01:2021 - Broken Access Control')
+        owasp_categories = {
+            'A01:2021 - Broken Access Control': [],
+            'A02:2021 - Cryptographic Failures': [],
+            'A03:2021 - Injection': [],
+            'A04:2021 - Insecure Design': [],
+            'A05:2021 - Security Misconfiguration': [],
+            'A06:2021 - Vulnerable Components': [],
+            'A07:2021 - Authentication Failures': [],
+            'A08:2021 - Software and Data Integrity': [],
+            'A09:2021 - Security Logging Failures': [],
+            'A10:2021 - Server-Side Request Forgery': []
+        }
         
-        # A02:2021 - Cryptographic Failures
-        if self._check_crypto_failures(code):
-            vulnerabilities.append('A02:2021 - Cryptographic Failures')
+        # Map Bandit findings to OWASP categories
+        for issue in bandit_results.get('issues', []):
+            issue_type = issue.get('type', '').lower()
+            
+            # Injection
+            if any(keyword in issue_type for keyword in ['sql', 'injection', 'exec', 'eval']):
+                owasp_categories['A03:2021 - Injection'].append(issue)
+            
+            # Cryptographic Failures
+            elif any(keyword in issue_type for keyword in ['weak', 'crypto', 'hash', 'md5', 'sha1']):
+                owasp_categories['A02:2021 - Cryptographic Failures'].append(issue)
+            
+            # Security Misconfiguration
+            elif any(keyword in issue_type for keyword in ['assert', 'debug', 'hardcoded']):
+                owasp_categories['A05:2021 - Security Misconfiguration'].append(issue)
+            
+            # Default to Insecure Design
+            else:
+                owasp_categories['A04:2021 - Insecure Design'].append(issue)
         
-        # A03:2021 - Injection
-        if self._check_injection(code):
-            vulnerabilities.append('A03:2021 - Injection')
+        # Remove empty categories
+        owasp_results = {k: v for k, v in owasp_categories.items() if v}
         
-        # A04:2021 - Insecure Design
-        # (More conceptual, harder to detect automatically)
-        
-        # A05:2021 - Security Misconfiguration
-        if self._check_security_misconfiguration(code):
-            vulnerabilities.append('A05:2021 - Security Misconfiguration')
-        
-        # A06:2021 - Vulnerable and Outdated Components
-        # (Would require dependency checking)
-        
-        # A07:2021 - Identification and Authentication Failures
-        if self._check_auth_failures(code):
-            vulnerabilities.append('A07:2021 - Identification and Authentication Failures')
-        
-        # A08:2021 - Software and Data Integrity Failures
-        if self._check_integrity_failures(code):
-            vulnerabilities.append('A08:2021 - Software and Data Integrity Failures')
-        
-        # A09:2021 - Security Logging and Monitoring Failures
-        # (Harder to detect automatically)
-        
-        # A10:2021 - Server-Side Request Forgery (SSRF)
-        if self._check_ssrf(code):
-            vulnerabilities.append('A10:2021 - Server-Side Request Forgery')
-        
-        return vulnerabilities
+        return {
+            'total_categories_affected': len(owasp_results),
+            'categories': owasp_results,
+            'summary': self._generate_owasp_summary(owasp_results)
+        }
     
-    def _check_broken_access_control(self, code: str) -> bool:
-        """Check for broken access control issues"""
-        # Simple checks for missing authorization
-        indicators = [
-            'admin' in code.lower() and 'check' not in code.lower(),
-            '@login_required' not in code and 'admin' in code.lower()
-        ]
-        return any(indicators)
-    
-    def _check_crypto_failures(self, code: str) -> bool:
-        """Check for cryptographic failures"""
-        weak_crypto = ['md5', 'sha1', 'des', 'rc4']
-        return any(algo in code.lower() for algo in weak_crypto)
-    
-    def _check_injection(self, code: str) -> bool:
-        """Check for injection vulnerabilities"""
-        # SQL injection
-        sql_patterns = [
-            'f"SELECT' in code,
-            'f\'SELECT' in code,
-            '" + ' in code and 'SELECT' in code.upper(),
-            '\' + ' in code and 'SELECT' in code.upper()
-        ]
+    def _generate_owasp_summary(self, owasp_results: Dict) -> str:
+        """
+        Generate a summary of OWASP findings
         
-        # Command injection
-        cmd_patterns = [
-            'os.system(' in code,
-            'subprocess.call(' in code and 'shell=True' in code,
-            'eval(' in code,
-            'exec(' in code
-        ]
+        Args:
+            owasp_results: OWASP categorized results
         
-        return any(sql_patterns + cmd_patterns)
-    
-    def _check_security_misconfiguration(self, code: str) -> bool:
-        """Check for security misconfiguration"""
-        indicators = [
-            'DEBUG = True' in code or 'debug=True' in code,
-            'SECRET_KEY = ' in code and '=' in code,  # Hardcoded secret
-            'verify=False' in code  # Disabling SSL verification
-        ]
-        return any(indicators)
-    
-    def _check_auth_failures(self, code: str) -> bool:
-        """Check for authentication failures"""
-        weak_auth = [
-            'password == ' in code and '"' in code,  # Hardcoded password
-            'import random' in code and 'token' in code.lower(),  # Weak random
-            'session_id' in code.lower() and 'secure' not in code.lower()
-        ]
-        return any(weak_auth)
-    
-    def _check_integrity_failures(self, code: str) -> bool:
-        """Check for integrity failures"""
-        indicators = [
-            'pickle.load' in code,  # Insecure deserialization
-            'yaml.load(' in code and 'Loader=' not in code
-        ]
-        return any(indicators)
-    
-    def _check_ssrf(self, code: str) -> bool:
-        """Check for SSRF vulnerabilities"""
-        indicators = [
-            'requests.get(' in code and 'user' in code.lower(),
-            'urllib.request.urlopen(' in code and 'input(' in code
-        ]
-        return any(indicators)
+        Returns:
+            Summary string
+        """
+        if not owasp_results:
+            return "No OWASP Top 10 vulnerabilities detected"
+        
+        summary_lines = []
+        for category, issues in owasp_results.items():
+            summary_lines.append(f"{category}: {len(issues)} issue(s)")
+        
+        return "\n".join(summary_lines)
     
     def scan_for_secrets(self, code: str) -> List[Dict]:
         """
-        Scan for hardcoded secrets (API keys, passwords, tokens)
+        Scan for hardcoded secrets (passwords, API keys, tokens)
         
         Args:
-            code: Python source code
+            code: Python source code to scan
         
         Returns:
             List of potential secrets found
         """
+        import re
+        
         secrets = []
         lines = code.split('\n')
         
         # Patterns for common secrets
-        secret_patterns = {
-            'api_key': r'api[_-]?key',
-            'password': r'password',
-            'secret': r'secret',
-            'token': r'token',
-            'aws_access': r'aws[_-]?access',
-            'private_key': r'private[_-]?key'
-        }
+        patterns = [
+            (r'password\s*=\s*["\'][^"\']+["\']', 'Password'),
+            (r'api[_-]?key\s*=\s*["\'][^"\']+["\']', 'API Key'),
+            (r'secret\s*=\s*["\'][^"\']+["\']', 'Secret'),
+            (r'token\s*=\s*["\'][^"\']+["\']', 'Token'),
+            (r'(aws|amazon)[_-]?secret', 'AWS Secret'),
+            (r'private[_-]?key', 'Private Key'),
+        ]
         
-        for line_num, line in enumerate(lines, 1):
-            lower_line = line.lower()
-            
-            # Check for assignment with quotes
-            if '=' in line and ('"' in line or "'" in line):
-                for secret_type, pattern in secret_patterns.items():
-                    if pattern in lower_line:
-                        secrets.append({
-                            'line': line_num,
-                            'type': secret_type,
-                            'severity': 'high',
-                            'message': f'Possible hardcoded {secret_type} detected',
-                            'code': line.strip()
-                        })
+        for i, line in enumerate(lines, 1):
+            for pattern, secret_type in patterns:
+                if re.search(pattern, line, re.IGNORECASE):
+                    secrets.append({
+                        'line': i,
+                        'type': secret_type,
+                        'severity': 'HIGH',
+                        'description': f'Hardcoded {secret_type} detected',
+                        'code': line.strip()
+                    })
         
         return secrets

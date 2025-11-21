@@ -1,70 +1,70 @@
 """
 Test Generator Agent
 
-Specialized agent for generating comprehensive unit tests.
-Creates pytest-compatible tests with edge cases and error scenarios.
+Specialized agent for generating unit tests and test cases.
 """
 
 import autogen
-from typing import Dict, List, Optional
+import re
+from typing import Dict, List
 from .base_agent import BaseAgent
 
 
 class TestGenerator(BaseAgent):
     """
     Test Generator agent specializing in:
-    - Unit test creation
+    - Unit test generation
     - Edge case identification
     - Test coverage analysis
-    - Mocking and fixtures
-    - Integration test design
-    - Test-driven development
+    - Pytest-style test creation
     """
     
-    def __init__(self, llm_config: Dict, tools: Dict):
+    def __init__(self, llm_config: Dict, tools: Dict = None):
         """
         Initialize Test Generator agent
         
         Args:
             llm_config: LLM configuration dictionary
-            tools: Dictionary of tool instances
+            tools: Dictionary of tool instances (optional)
         """
-        self.tools = tools
+        self.tools = tools or {}
         self.llm_config = llm_config
         
         system_message = """
         You are a Test Generator specializing in creating comprehensive unit tests.
         
         Your responsibilities:
-        1. Generate pytest-compatible unit tests
-        2. Identify and test edge cases
-        3. Create tests for error conditions
-        4. Design integration tests
-        5. Suggest mocking strategies
-        6. Aim for high code coverage
-        7. Follow testing best practices
+        1. Analyze the code to identify functions that need testing
+        2. Suggest test cases for each function
+        3. Identify edge cases and error conditions
+        4. Prioritize tests by importance (CRITICAL, HIGH, MEDIUM, LOW)
         
-        For each function/class in the code:
-        - Create tests for normal operation (happy path)
-        - Test boundary conditions
-        - Test error handling
-        - Test edge cases
-        - Use descriptive test names
+        For EACH function, suggest:
+        - Happy path test (normal valid inputs)
+        - Edge case tests (empty, null, boundary conditions)
+        - Error handling tests (invalid inputs, exceptions)
+        - Security tests (SQL injection, XSS if applicable)
         
-        Test structure:
-        - Use pytest framework
-        - Follow AAA pattern (Arrange, Act, Assert)
-        - Use fixtures for setup/teardown
-        - Mock external dependencies
-        - Use parametrize for multiple test cases
+        Format your response like this:
         
-        Generate tests that are:
-        - Clear and readable
-        - Independent from each other
-        - Fast to execute
-        - Comprehensive in coverage
+        Function: function_name
+        Test 1: [Priority] Description
+        Test 2: [Priority] Description
+        ...
         
-        Include docstrings explaining what each test verifies.
+        Example:
+        Function: get_user(username)
+        Test 1: [HIGH] Test with valid username returns user data
+        Test 2: [CRITICAL] Test with SQL injection attempt is blocked
+        Test 3: [MEDIUM] Test with empty string returns None
+        Test 4: [MEDIUM] Test with None returns None
+        
+        Be specific and actionable. Focus on the most important tests first.
+        
+        IMPORTANT:
+        - Provide complete test suggestions
+        - Do NOT tell the orchestrator what to do next
+        - Focus only on test recommendations
         """
         
         self.agent = autogen.AssistantAgent(
@@ -80,289 +80,200 @@ class TestGenerator(BaseAgent):
     def register_functions(self):
         """Register tool functions with the agent"""
         function_map = {
-            "generate_tests": self.generate_tests,
-            "identify_edge_cases": self.identify_edge_cases,
+            "identify_test_cases": self.identify_test_cases,
+            "generate_test_skeleton": self.generate_test_skeleton,
         }
         return function_map
     
-    def generate_tests(self, code: str, function_name: Optional[str] = None) -> str:
+    def identify_test_cases(self, code: str) -> List[Dict]:
         """
-        Generate unit tests for the provided code
+        Identify what test cases should be created for the code
         
         Args:
-            code: Python source code to generate tests for
-            function_name: Specific function to test (optional)
+            code: Python source code to analyze
         
         Returns:
-            Generated test code as string
+            List of test case descriptions
         """
-        # Parse code to extract functions and classes
+        test_cases = []
+        
+        # Extract functions from code
         functions = self._extract_functions(code)
-        classes = self._extract_classes(code)
         
-        test_code = self._generate_test_header()
-        
-        # Generate tests for functions
         for func in functions:
-            if function_name is None or func['name'] == function_name:
-                test_code += self._generate_function_tests(func)
+            # Basic test cases for each function
+            test_cases.append({
+                'function': func['name'],
+                'line': func['line'],
+                'test_type': 'happy_path',
+                'description': f'Test {func["name"]} with valid inputs',
+                'priority': 'HIGH'
+            })
+            
+            # Check for edge cases based on function signature
+            if 'username' in func['params'] or 'email' in func['params']:
+                test_cases.append({
+                    'function': func['name'],
+                    'test_type': 'validation',
+                    'description': f'Test {func["name"]} with invalid/empty input',
+                    'priority': 'HIGH'
+                })
+            
+            if any(keyword in func['body'].lower() for keyword in ['query', 'database', 'db']):
+                test_cases.append({
+                    'function': func['name'],
+                    'test_type': 'sql_injection',
+                    'description': f'Test {func["name"]} against SQL injection',
+                    'priority': 'CRITICAL'
+                })
+            
+            if 'list' in func['params'] or 'items' in func['params']:
+                test_cases.extend([
+                    {
+                        'function': func['name'],
+                        'test_type': 'edge_case',
+                        'description': f'Test {func["name"]} with empty list',
+                        'priority': 'MEDIUM'
+                    },
+                    {
+                        'function': func['name'],
+                        'test_type': 'edge_case',
+                        'description': f'Test {func["name"]} with single item',
+                        'priority': 'MEDIUM'
+                    }
+                ])
+            
+            # Error handling tests
+            if 'try' in func['body'] or 'except' in func['body']:
+                test_cases.append({
+                    'function': func['name'],
+                    'test_type': 'error_handling',
+                    'description': f'Test {func["name"]} error handling',
+                    'priority': 'HIGH'
+                })
         
-        # Generate tests for classes
-        for cls in classes:
-            test_code += self._generate_class_tests(cls)
-        
-        return test_code
+        return test_cases
     
-    def _generate_test_header(self) -> str:
-        """Generate test file header with imports"""
-        return """\"\"\"
-Generated unit tests
+    def generate_test_skeleton(self, function_name: str, test_cases: List[Dict]) -> str:
+        """
+        Generate a test skeleton for a function
+        
+        Args:
+            function_name: Name of the function to test
+            test_cases: List of test case descriptions
+        
+        Returns:
+            Pytest test code skeleton
+        """
+        test_code = f"""import pytest
+from your_module import {function_name}
 
-This test file was automatically generated by the Test Generator agent.
-Review and adjust as needed for your specific use case.
-\"\"\"
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
-
-
+class Test{function_name.title().replace('_', '')}:
+    \"\"\"Test suite for {function_name} function\"\"\"
+    
 """
-    
-    def _extract_functions(self, code: str) -> List[Dict]:
-        """Extract function definitions from code"""
-        functions = []
-        lines = code.split('\n')
         
-        for line_num, line in enumerate(lines):
-            if line.strip().startswith('def ') and 'self' not in line:
-                func_name = line.split('def ')[1].split('(')[0]
-                functions.append({
-                    'name': func_name,
-                    'line': line_num,
-                    'signature': line.strip()
-                })
-        
-        return functions
-    
-    def _extract_classes(self, code: str) -> List[Dict]:
-        """Extract class definitions from code"""
-        classes = []
-        lines = code.split('\n')
-        
-        for line_num, line in enumerate(lines):
-            if line.strip().startswith('class '):
-                class_name = line.split('class ')[1].split('(')[0].split(':')[0]
-                classes.append({
-                    'name': class_name,
-                    'line': line_num
-                })
-        
-        return classes
-    
-    def _generate_function_tests(self, func: Dict) -> str:
-        """Generate tests for a single function"""
-        func_name = func['name']
-        
-        test_code = f"""
-class Test{func_name.title().replace('_', '')}:
-    \"\"\"Tests for {func_name} function\"\"\"
-    
-    def test_{func_name}_happy_path(self):
-        \"\"\"Test normal operation of {func_name}\"\"\"
+        # Generate test methods
+        for i, test_case in enumerate(test_cases, 1):
+            test_name = f"test_{function_name}_{test_case.get('test_type', 'case')}"
+            test_code += f"""    def {test_name}(self):
+        \"\"\"Test: {test_case.get('description', 'Test case')}\"\"\"
         # Arrange
         # TODO: Set up test data
         
         # Act
         # TODO: Call the function
-        # result = {func_name}(test_input)
+        result = {function_name}(...)
         
         # Assert
-        # TODO: Verify the result
-        # assert result == expected
-        pass
+        # TODO: Add assertions
+        assert result is not None
     
-    def test_{func_name}_edge_cases(self):
-        \"\"\"Test edge cases for {func_name}\"\"\"
-        # TODO: Test boundary conditions
-        # - Empty input
-        # - Null/None values
-        # - Maximum values
-        # - Minimum values
-        pass
-    
-    def test_{func_name}_error_handling(self):
-        \"\"\"Test error handling in {func_name}\"\"\"
-        # TODO: Test that appropriate errors are raised
-        # with pytest.raises(ValueError):
-        #     {func_name}(invalid_input)
-        pass
-
 """
+        
         return test_code
     
-    def _generate_class_tests(self, cls: Dict) -> str:
-        """Generate tests for a class"""
-        class_name = cls['name']
-        
-        test_code = f"""
-class Test{class_name}:
-    \"\"\"Tests for {class_name} class\"\"\"
-    
-    @pytest.fixture
-    def {class_name.lower()}_instance(self):
-        \"\"\"Fixture to create {class_name} instance\"\"\"
-        # TODO: Create and return instance
-        # return {class_name}(test_params)
-        pass
-    
-    def test_{class_name.lower()}_initialization(self, {class_name.lower()}_instance):
-        \"\"\"Test {class_name} initialization\"\"\"
-        # TODO: Verify instance is created correctly
-        # assert {class_name.lower()}_instance is not None
-        pass
-    
-    def test_{class_name.lower()}_methods(self, {class_name.lower()}_instance):
-        \"\"\"Test {class_name} methods\"\"\"
-        # TODO: Test public methods
-        pass
-
-"""
-        return test_code
-    
-    def identify_edge_cases(self, code: str, function_name: str) -> List[str]:
+    def _extract_functions(self, code: str) -> List[Dict]:
         """
-        Identify edge cases for a specific function
-        
-        Args:
-            code: Source code containing the function
-            function_name: Name of function to analyze
-        
-        Returns:
-            List of edge case descriptions
-        """
-        edge_cases = [
-            "Empty input (empty string, empty list, etc.)",
-            "None/null values",
-            "Maximum boundary values",
-            "Minimum boundary values",
-            "Zero values",
-            "Negative values (if applicable)",
-            "Very large inputs (stress testing)",
-            "Invalid data types",
-            "Malformed input",
-            "Concurrent access (if applicable)"
-        ]
-        
-        # Analyze function signature to identify relevant edge cases
-        # TODO: Implement smarter edge case detection based on function signature
-        
-        return edge_cases
-    
-    def generate_parametrized_tests(self, function_name: str, test_cases: List[Dict]) -> str:
-        """
-        Generate parametrized tests for multiple test cases
-        
-        Args:
-            function_name: Name of function to test
-            test_cases: List of test case dictionaries with input/output pairs
-        
-        Returns:
-            Parametrized test code
-        """
-        test_code = f"""
-    @pytest.mark.parametrize("input_data,expected", [
-"""
-        
-        for case in test_cases:
-            test_code += f"        ({case['input']}, {case['expected']}),\n"
-        
-        test_code += f"""    ])
-    def test_{function_name}_parametrized(self, input_data, expected):
-        \"\"\"Parametrized test for {function_name}\"\"\"
-        result = {function_name}(input_data)
-        assert result == expected
-
-"""
-        return test_code
-    
-    def generate_integration_tests(self, code: str) -> str:
-        """
-        Generate integration test suggestions
-        
-        Args:
-            code: Source code to analyze
-        
-        Returns:
-            Integration test template
-        """
-        test_code = """
-class TestIntegration:
-    \"\"\"Integration tests for the complete system\"\"\"
-    
-    @pytest.fixture
-    def setup_environment(self):
-        \"\"\"Set up test environment\"\"\"
-        # TODO: Set up database, mock services, etc.
-        yield
-        # TODO: Tear down test environment
-    
-    def test_end_to_end_workflow(self, setup_environment):
-        \"\"\"Test complete workflow from start to finish\"\"\"
-        # TODO: Implement end-to-end test
-        pass
-    
-    def test_error_recovery(self, setup_environment):
-        \"\"\"Test system recovery from errors\"\"\"
-        # TODO: Test error handling in integrated system
-        pass
-
-"""
-        return test_code
-    
-    def analyze(self, code: str) -> Dict:
-        """
-        High-level test generation analysis
+        Extract function definitions from code
         
         Args:
             code: Python source code
         
         Returns:
-            Test generation results and recommendations
+            List of function information
         """
+        functions = []
+        lines = code.split('\n')
+        current_function = None
+        function_body = []
+        
+        for i, line in enumerate(lines, 1):
+            # Detect function definition
+            if line.strip().startswith('def '):
+                # Save previous function if exists
+                if current_function:
+                    current_function['body'] = '\n'.join(function_body)
+                    functions.append(current_function)
+                    function_body = []
+                
+                # Parse new function
+                match = re.match(r'\s*def\s+(\w+)\s*\((.*?)\)', line)
+                if match:
+                    func_name = match.group(1)
+                    params = [p.strip().split(':')[0].strip() for p in match.group(2).split(',') if p.strip()]
+                    
+                    current_function = {
+                        'name': func_name,
+                        'line': i,
+                        'params': params,
+                        'body': ''
+                    }
+            elif current_function:
+                # Accumulate function body
+                if line and not line[0].isspace() and not line.strip().startswith('def '):
+                    # End of function
+                    current_function['body'] = '\n'.join(function_body)
+                    functions.append(current_function)
+                    current_function = None
+                    function_body = []
+                else:
+                    function_body.append(line)
+        
+        # Don't forget last function
+        if current_function:
+            current_function['body'] = '\n'.join(function_body)
+            functions.append(current_function)
+        
+        return functions
+    
+    def analyze(self, code: str) -> Dict:
+        """
+        Comprehensive test generation analysis
+        
+        Args:
+            code: Python source code to analyze
+        
+        Returns:
+            Test generation analysis results
+        """
+        test_cases = self.identify_test_cases(code)
+        
+        # Group by function
+        functions = {}
+        for case in test_cases:
+            func = case['function']
+            if func not in functions:
+                functions[func] = []
+            functions[func].append(case)
+        
         results = {
-            'generated_tests': self.generate_tests(code),
-            'edge_cases': self.identify_edge_cases(code, 'all'),
-            'coverage_recommendations': self._suggest_coverage_improvements(code),
-            'mocking_suggestions': self._suggest_mocking_strategies(code)
+            'total_test_cases': len(test_cases),
+            'functions_analyzed': len(functions),
+            'test_cases_by_function': functions,
+            'critical_tests': [tc for tc in test_cases if tc.get('priority') == 'CRITICAL'],
+            'high_priority_tests': [tc for tc in test_cases if tc.get('priority') == 'HIGH']
         }
         
         return results
-    
-    def _suggest_coverage_improvements(self, code: str) -> List[str]:
-        """Suggest improvements for test coverage"""
-        suggestions = [
-            "Add tests for error paths and exception handling",
-            "Include tests for boundary conditions",
-            "Test all public methods and functions",
-            "Add integration tests for component interactions",
-            "Test concurrent/async operations if present"
-        ]
-        return suggestions
-    
-    def _suggest_mocking_strategies(self, code: str) -> List[str]:
-        """Suggest mocking strategies for external dependencies"""
-        suggestions = []
-        
-        if 'import requests' in code or 'import urllib' in code:
-            suggestions.append("Mock HTTP requests using responses or requests-mock")
-        
-        if 'import sqlite3' in code or 'import psycopg2' in code:
-            suggestions.append("Mock database connections using fixtures")
-        
-        if 'open(' in code:
-            suggestions.append("Mock file I/O operations")
-        
-        if 'datetime' in code:
-            suggestions.append("Mock datetime for time-dependent tests")
-        
-        return suggestions

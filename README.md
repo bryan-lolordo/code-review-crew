@@ -1,29 +1,31 @@
 # 🔍 Code Review Crew - Multi-Agent Code Analysis System
 
-**[📺 Demo Coming Soon](#)**
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![AutoGen](https://img.shields.io/badge/AutoGen-0.2.32-green.svg)](https://github.com/microsoft/autogen)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-An intelligent multi-agent system powered by **Microsoft AutoGen** that performs comprehensive code reviews through collaborative AI agents. The system orchestrates specialized agents that debate, analyze, and provide actionable feedback on code quality, security, performance, and testing.
+An intelligent multi-agent system powered by **Microsoft AutoGen** that performs comprehensive code reviews through collaborative AI agents. Multiple specialized agents work together, discussing and debating code quality, security vulnerabilities, and performance optimizations to provide expert-level feedback.
 
 ## 🎯 What is Code Review Crew?
 
-Code Review Crew is an **autonomous multi-agent system** that replaces traditional code review processes with AI-powered analysis. Multiple specialized agents collaborate in real-time discussions to provide comprehensive, expert-level code feedback.
+Code Review Crew is an **autonomous multi-agent system** where AI agents collaborate in real-time discussions to analyze code from multiple perspectives. Think of it as having a team of expert developers reviewing your code simultaneously.
 
-**Key Technologies:**
-- 🤖 Microsoft AutoGen for multi-agent orchestration
-- 🧠 OpenAI GPT-4 for code analysis
-- 🛡️ Static analysis tools (Pylint, Bandit, Radon)
-- 🎨 Streamlit for web interface
-- 🐳 Docker for safe code execution
+**Core Technologies:**
+- 🤖 **Microsoft AutoGen** - Multi-agent orchestration and group chat
+- 🧠 **OpenAI GPT-4** - Advanced code analysis capabilities
+- 🛠️ **Static Analysis Tools** - Pylint, Bandit, Radon integration
+- 🎨 **Streamlit** - Interactive web interface
+- 🐳 **Docker** - Safe code execution (optional)
 
 ## 💡 Why This Project?
 
-This project demonstrates **advanced multi-agent AI patterns**:
+This project demonstrates **production-ready multi-agent AI patterns**:
 
-✅ **Multi-Agent Collaboration** - Agents debate and reach consensus  
-✅ **Code Execution** - Safe sandboxed code running and testing  
-✅ **Real Tool Integration** - Actual linting and security scanners  
-✅ **Group Chat Orchestration** - Complex agent interaction patterns  
-✅ **Production-Ready Architecture** - Modular, testable, documented  
+✅ **Multi-Agent Collaboration** - Agents discuss and reach consensus through natural dialogue  
+✅ **Group Chat Orchestration** - Complex agent interaction patterns using AutoGen  
+✅ **Tool Integration Architecture** - Extensible design for static analysis tools  
+✅ **Comprehensive Analysis** - Security, performance, quality, and testing coverage  
+✅ **Real-World Application** - Solves actual code review challenges  
 
 ---
 
@@ -38,70 +40,30 @@ This project demonstrates **advanced multi-agent AI patterns**:
                                │
                     ┌──────────▼──────────┐
                     │  Review Orchestrator │
-                    │   (Manages Flow)     │
+                    │   (Coordinates Team) │
                     └──────────┬──────────┘
                                │
         ┌──────────────────────┼──────────────────────┐
         │                      │                      │
 ┌───────▼────────┐   ┌────────▼────────┐   ┌────────▼─────────┐
 │ Code Analyzer  │   │ Security        │   │ Performance      │
-│ - Code smells  │   │ Reviewer        │   │ Optimizer        │
-│ - Bugs         │   │ - Vulnerabilities│   │ - Complexity     │
-│ - Style issues │   │ - Best practices │   │ - Bottlenecks    │
-└───────┬────────┘   └────────┬────────┘   └────────┬─────────┘
-        │                      │                      │
-        └──────────────────────┼──────────────────────┘
-                               │
-                    ┌──────────▼──────────┐
-                    │  Test Generator     │
-                    │  - Unit tests       │
-                    │  - Edge cases       │
-                    └──────────┬──────────┘
-                               │
-                    ┌──────────▼──────────┐
-                    │  Code Executor      │
-                    │  - Runs tests       │
-                    │  - Validates fixes  │
-                    └─────────────────────┘
+│ • Style issues │   │ Reviewer        │   │ Optimizer        │
+│ • Code smells  │   │ • Vulnerabilities│   │ • Complexity     │
+│ • Best practices│   │ • OWASP Top 10  │   │ • Bottlenecks    │
+└────────────────┘   └─────────────────┘   └──────────────────┘
 ```
 
-### Agent Roles
+### How It Works
 
-**Review Orchestrator**
-- Manages the review workflow
-- Synthesizes feedback from all agents
-- Prioritizes issues by severity
-- Generates final review report
-
-**Code Analyzer**
-- Identifies code smells and anti-patterns
-- Checks code style and conventions
-- Detects potential bugs
-- Suggests refactoring opportunities
-
-**Security Reviewer**
-- Scans for security vulnerabilities
-- Checks for common exploits (SQL injection, XSS, etc.)
-- Reviews authentication and authorization
-- Validates input sanitization
-
-**Performance Optimizer**
-- Analyzes algorithmic complexity
-- Identifies performance bottlenecks
-- Suggests optimization strategies
-- Reviews memory usage patterns
-
-**Test Generator**
-- Creates comprehensive unit tests
-- Generates edge case scenarios
-- Provides test coverage analysis
-- Suggests integration tests
-
-**Code Executor**
-- Safely runs code in Docker sandbox
-- Executes generated tests
-- Validates proposed fixes
-- Reports runtime errors
+1. **User submits code** via Streamlit UI or CLI
+2. **Review Orchestrator** coordinates the review process
+3. **Specialized agents** analyze from different perspectives:
+   - **Code Analyzer**: Style, structure, maintainability
+   - **Security Reviewer**: Vulnerabilities, exploits, security best practices
+   - **Performance Optimizer**: Algorithm complexity, bottlenecks, optimizations
+4. **Agents discuss** findings through AutoGen group chat
+5. **Orchestrator synthesizes** final report with prioritized issues
+6. **User receives** comprehensive review with grades and actionable fixes
 
 ---
 
@@ -109,77 +71,57 @@ This project demonstrates **advanced multi-agent AI patterns**:
 
 ### 🤖 Multi-Agent Collaboration
 
-**Group Chat Debates**
-```python
-# Agents engage in iterative discussions
-Code Analyzer: "This function has O(n²) complexity..."
-Performance Optimizer: "Agreed. I suggest using a hash map..."
-Security Reviewer: "But first, we need to sanitize the input..."
-Orchestrator: "Let's prioritize security, then optimize..."
-```
+Agents engage in natural conversations to analyze code:
 
-**Consensus Building**
-- Agents can agree, disagree, or build on each other's findings
-- Natural conversation flow mimics human code reviews
-- Emergent insights from agent interactions
+```
+[ReviewOrchestrator]: "Let's begin the review. CodeAnalyzer, please start."
+
+[CodeAnalyzer]: "I found SQL injection on line 4, nested loops causing O(n²) 
+complexity, and MD5 hashing which is cryptographically weak."
+
+[SecurityReviewer]: "Confirming SQL injection - this is CRITICAL. Also found 
+hardcoded API key on line 24. These must be addressed immediately."
+
+[PerformanceOptimizer]: "The nested loop is O(n²). Suggesting hash map approach 
+for O(n) complexity. Also recommend caching for repeated calls."
+
+[ReviewOrchestrator]: "Final grade: C-. Priority: Fix SQL injection (Critical), 
+then O(n²) loops (High), then hardcoded secrets (Critical)."
+```
 
 ### 🛡️ Comprehensive Analysis
 
-**Multi-Dimensional Review**
-- **Code Quality:** Style, readability, maintainability
-- **Security:** Vulnerabilities, exploits, best practices
-- **Performance:** Complexity, bottlenecks, optimization
-- **Testing:** Coverage, edge cases, test quality
-- **Documentation:** Comments, docstrings, clarity
+**Multi-Dimensional Review:**
+- **Code Quality**: PEP 8 compliance, readability, maintainability
+- **Security**: SQL injection, XSS, weak crypto, hardcoded secrets
+- **Performance**: Time/space complexity, bottlenecks, optimizations
+- **Best Practices**: Error handling, documentation, design patterns
 
-**Real Tool Integration**
-```python
-# Actual static analysis tools
-pylint_score = run_pylint(code)
-security_issues = run_bandit(code)
-complexity = calculate_complexity(code)
-test_coverage = run_pytest_coverage(code)
-```
+**Tool Integration Ready:**
+- Pylint for code quality metrics
+- Bandit for security vulnerability scanning
+- Radon for cyclomatic complexity analysis
+- Extensible architecture for additional tools
 
-### 🐳 Safe Code Execution
+### 📊 Structured Reports
 
-**Docker Sandbox**
-- Isolated execution environment
-- No access to host system
-- Resource limits (CPU, memory, time)
-- Automatic cleanup after execution
-
-**Test Validation**
-```python
-# Generated tests are actually executed
-test_results = executor.run_tests(generated_tests)
-if test_results.passed:
-    print("✅ All tests pass!")
-```
-
-### 📊 Actionable Reports
-
-**Structured Feedback**
 ```markdown
 ## Code Review Summary
+Grade: C-
 
-### 🔴 Critical Issues (2)
-1. SQL Injection vulnerability in line 45
-2. Unhandled exception in line 78
+### 🔴 Critical Issues (3)
+1. SQL Injection in get_user function (Line 4)
+2. Weak MD5 cryptography in hash_password (Line 21)
+3. Hardcoded API key (Line 24)
 
-### 🟡 Warnings (5)
-1. Function complexity too high (12/10)
-2. Missing input validation
-...
+### 🟡 High Priority (1)
+1. O(n²) nested loops in process_data (Line 12-15)
 
-### 💡 Suggestions (8)
-1. Consider using list comprehension
-2. Extract method for better readability
-...
-
-### ✅ Strengths
-- Well-documented functions
-- Good error handling in most cases
+### 💡 Recommendations
+- Use parameterized queries for SQL
+- Replace MD5 with bcrypt
+- Move secrets to environment variables
+- Optimize nested loop with hash map
 ```
 
 ---
@@ -187,24 +129,29 @@ if test_results.passed:
 ## 🛠️ Installation & Setup
 
 ### Prerequisites
+
 ```bash
 Python 3.9+
 OpenAI API key
-Docker (for code execution)
 ```
 
 ### Quick Start
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/yourusername/code-review-crew.git
+git clone https://github.com/bryan-lolordo/code-review-crew.git
 cd code-review-crew
 ```
 
 2. **Create virtual environment**
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# On Windows:
+.venv\Scripts\activate
+
+# On Mac/Linux:
+source .venv/bin/activate
 ```
 
 3. **Install dependencies**
@@ -214,9 +161,8 @@ pip install -r requirements.txt
 
 4. **Configure environment variables**
 ```bash
-cp .env.example .env
-# Edit .env with your API key:
-# OPENAI_API_KEY=your_key_here
+# Create .env file
+echo "OPENAI_API_KEY=your_key_here" > .env
 ```
 
 5. **Run the application**
@@ -224,48 +170,42 @@ cp .env.example .env
 streamlit run app.py
 ```
 
-Navigate to `http://localhost:8501`
+Navigate to `http://localhost:8501` in your browser.
 
 ---
 
 ## 💻 Usage
 
-### Web Interface (Recommended)
+### Web Interface
 
-1. **Paste or Upload Code**
-   - Copy-paste code directly
-   - Upload Python files
-   - Load from examples
+1. **Load Example Code**
+   - Click "Load Example" radio button
+   - Select from predefined examples (SQL Injection, Performance Issues, etc.)
+   - Or paste your own Python code
 
-2. **Configure Review**
-   - Select analysis depth (quick/standard/deep)
-   - Choose which agents to include
-   - Enable/disable code execution
+2. **Configure Review** (Optional)
+   - Adjust max conversation rounds (5-30)
+   - Set AI temperature (0.0-1.0)
+   - Choose analysis depth
 
 3. **Start Review**
+   - Click "🚀 Start Review" button
+   - Wait 30-60 seconds while agents analyze
    - Watch agents collaborate in real-time
-   - See the group chat conversation
-   - Get final consolidated report
 
-4. **Apply Fixes**
-   - Review suggested changes
-   - See before/after comparisons
-   - Download improved code
+4. **View Results**
+   - **Results Tab**: See final grades and prioritized issues
+   - **Agent Chat Tab**: Watch full conversation between agents
+   - Each agent provides specific analysis and recommendations
 
-### CLI Interface
+### Command Line
 
 ```bash
-# Review a single file
-python -m code_review_crew.cli review mycode.py
+# Test the standalone version
+python run_group_chat_standalone.py
 
-# Review with specific agents
-python -m code_review_crew.cli review mycode.py --agents security performance
-
-# Generate tests only
-python -m code_review_crew.cli generate-tests mycode.py
-
-# Batch review multiple files
-python -m code_review_crew.cli review-batch src/
+# Test with real tools integration
+python run_group_chat.py
 ```
 
 ---
@@ -274,51 +214,43 @@ python -m code_review_crew.cli review-batch src/
 
 ```
 code-review-crew/
-├── README.md
-├── ARCHITECTURE.md
-├── requirements.txt
-├── .env
+├── README.md                        # This file
+├── ARCHITECTURE.md                  # Detailed technical documentation
+├── requirements.txt                 # Python dependencies
+├── .env                            # Environment variables (create this)
 ├── .gitignore
 │
-├── code_review_crew/                # Main package
-│   ├── __init__.py
-│   ├── agents/                      # Agent definitions
-│   │   ├── __init__.py
-│   │   ├── code_analyzer.py
-│   │   ├── security_reviewer.py
-│   │   ├── performance_optimizer.py
-│   │   ├── test_generator.py
-│   │   ├── code_executor.py
-│   │   └── orchestrator.py
-│   │
-│   ├── tools/                       # Analysis tools
-│   │   ├── __init__.py
-│   │   ├── linting_tool.py         # Pylint integration
-│   │   ├── security_scanner.py     # Bandit integration
-│   │   ├── complexity_analyzer.py  # Radon integration
-│   │   └── test_runner.py          # Pytest integration
-│   │
-│   ├── utils/                       # Helper utilities
-│   │   ├── __init__.py
-│   │   ├── code_parser.py
-│   │   ├── report_generator.py
-│   │   └── sandbox_manager.py
-│   │
-│   └── config.py                    # Configuration
+├── app.py                          # Streamlit web interface
+├── run_group_chat.py               # AutoGen integration with tools
+├── run_group_chat_standalone.py    # Standalone demo version
+├── autogen_integration.py          # Helper for agent integration
 │
-├── app.py                           # Streamlit web interface
+├── code_review_crew/               # Main package
+│   ├── agents/                     # Agent definitions
+│   │   ├── base_agent.py          # Abstract base class
+│   │   ├── orchestrator.py        # Review coordinator
+│   │   ├── code_analyzer.py       # Code quality expert
+│   │   ├── security_reviewer.py   # Security expert
+│   │   ├── performance_optimizer.py # Performance expert
+│   │   ├── test_generator.py      # Test creation expert
+│   │   └── code_executor.py       # Safe code execution
+│   │
+│   ├── tools/                      # Analysis tools
+│   │   ├── linting_tool.py        # Pylint wrapper
+│   │   ├── security_scanner.py    # Bandit wrapper
+│   │   ├── complexity_analyzer.py # Radon wrapper
+│   │   ├── test_runner.py         # Pytest wrapper
+│   │   └── git_tool.py            # Git diff parser
+│   │
+│   └── utils/                      # Helper utilities
+│       ├── code_parser.py         # AST parsing
+│       ├── report_generator.py    # Report formatting
+│       └── sandbox_manager.py     # Docker management
 │
-├── examples/                        # Example code for testing
-│   ├── simple_function.py
-│   ├── security_issues.py
-│   ├── performance_issues.py
-│   └── complex_class.py
-│
-└── tests/                           # Unit tests
-    ├── __init__.py
-    ├── test_agents.py
-    ├── test_tools.py
-    └── test_integration.py
+└── examples/                       # Example code files
+    ├── sql_injection.py
+    ├── performance_issues.py
+    └── security_issues.py
 ```
 
 ---
@@ -326,188 +258,139 @@ code-review-crew/
 ## 🎯 AutoGen Patterns Demonstrated
 
 ### 1. **Group Chat Orchestration**
-Multiple agents engage in free-form conversation to solve complex problems.
+Multiple agents engage in structured conversations to analyze code collaboratively.
 
-### 2. **Code Execution Agents**
-Safe execution of untrusted code with UserProxyAgent and Docker.
+### 2. **Agent Specialization**
+Each agent has a specific expertise and system prompt guiding their analysis.
 
-### 3. **Tool-Augmented Agents**
-Agents enhanced with real static analysis tools for concrete results.
+### 3. **Consensus Building**
+Agents discuss, debate, and agree on issue priorities through natural dialogue.
 
-### 4. **Iterative Refinement**
-Agents can critique each other's suggestions and iterate to better solutions.
+### 4. **Tool Integration Architecture**
+Extensible design allows agents to call external analysis tools when needed.
 
-### 5. **Human-in-the-Loop**
-Optional human intervention at key decision points.
-
-### 6. **Consensus Building**
-Agents negotiate and agree on prioritization of issues.
+### 5. **Iterative Refinement**
+Agents can build on each other's findings for comprehensive analysis.
 
 ---
 
-## 🔬 Advanced Features
+## 📊 Example Output
 
-### Real-Time Agent Visualization
-
-Watch agents collaborate:
-```
-[Code Analyzer] 🔍 Analyzing code structure...
-[Security Reviewer] 🛡️ Found potential SQL injection on line 45
-[Performance Optimizer] ⚡ This loop is O(n²), suggesting optimization...
-[Code Analyzer] 💬 Agreed with security concern, should be top priority
-[Orchestrator] 📋 Prioritizing issues: Security (Critical) > Performance (High)
-```
-
-### Custom Agent Configuration
-
+### Input Code:
 ```python
-# Create custom agent teams
-quick_review = [code_analyzer, orchestrator]
-security_focused = [security_reviewer, code_analyzer, orchestrator]
-full_review = [code_analyzer, security_reviewer, 
-               performance_optimizer, test_generator, orchestrator]
+def get_user(username):
+    query = f"SELECT * FROM users WHERE name = '{username}'"
+    return db.execute(query)
+
+def hash_password(password):
+    import hashlib
+    return hashlib.md5(password.encode()).hexdigest()
+
+API_KEY = "sk-1234567890abcdef"
 ```
 
-### Learning from Feedback
+### Agent Analysis:
 
-```python
-# Agents improve based on user feedback
-if user_accepted_suggestion:
-    agent.learn_from_success(suggestion)
-else:
-    agent.learn_from_failure(suggestion, user_feedback)
-```
+**CodeAnalyzer** identified:
+- SQL injection vulnerability (Line 3)
+- Import statement inside function (Line 6)
+- Hardcoded secret (Line 9)
+
+**SecurityReviewer** confirmed:
+- CRITICAL: SQL injection - Use parameterized queries
+- CRITICAL: Weak MD5 hashing - Use bcrypt instead
+- CRITICAL: Hardcoded API key - Use environment variables
+
+**ReviewOrchestrator** synthesized:
+- Overall Grade: **C-**
+- 3 Critical issues requiring immediate attention
+- Provided specific code fixes for each issue
 
 ---
 
-## 📊 Example Review Output
+## 🔑 Core Dependencies
 
-```markdown
-# Code Review: user_authentication.py
-
-## Summary
-Reviewed 150 lines of Python code
-Review time: 2m 34s
-Overall Grade: C+ (Needs Improvement)
-
-## Critical Issues 🔴
-
-### 1. SQL Injection Vulnerability (Line 45)
-**Severity:** Critical  
-**Agent:** Security Reviewer  
-**Description:** User input directly concatenated into SQL query
-
-```python
-# ❌ Current (Vulnerable)
-query = f"SELECT * FROM users WHERE username = '{username}'"
-
-# ✅ Suggested Fix
-query = "SELECT * FROM users WHERE username = ?"
-cursor.execute(query, (username,))
 ```
-
-**Impact:** Attackers could execute arbitrary SQL commands
-**Fix Effort:** Low (5 minutes)
-
-### 2. Unhandled Exception (Line 78)
-**Severity:** High  
-**Agent:** Code Analyzer  
-...
-
-## Performance Issues 🟡
-
-### 1. Inefficient Algorithm (Line 112)
-**Current Complexity:** O(n²)  
-**Suggested Complexity:** O(n)  
-...
-
-## Generated Tests ✅
-
-```python
-def test_valid_login():
-    assert authenticate("user", "pass123") == True
-
-def test_sql_injection_attempt():
-    malicious = "' OR '1'='1"
-    assert authenticate(malicious, "any") == False
-    
-def test_empty_credentials():
-    assert authenticate("", "") == False
-```
-
-## Recommendations
-
-1. **Immediate:** Fix SQL injection (Critical)
-2. **Short-term:** Add input validation
-3. **Long-term:** Implement rate limiting
+pyautogen==0.2.32          # Multi-agent orchestration
+openai>=1.0.0              # LLM API
+streamlit>=1.28.0          # Web interface
+pylint>=3.0.0              # Code quality analysis
+bandit>=1.7.5              # Security scanning
+radon>=6.0.1               # Complexity analysis
+python-dotenv>=1.0.0       # Environment management
 ```
 
 ---
 
-## 🔐 Security Considerations
+## 🚀 What Makes This Special
 
-1. **Code Execution Safety**: All code runs in isolated Docker containers
-2. **API Key Management**: Environment variables, never committed
-3. **Input Sanitization**: All user code sanitized before analysis
-4. **Resource Limits**: CPU, memory, and time limits on execution
-5. **Audit Logging**: All reviews logged for security auditing
+### Advanced Multi-Agent Patterns
 
----
+1. **Natural Language Collaboration**: Agents communicate through conversation, not just API calls
+2. **Emergent Intelligence**: Insights arise from agent interactions
+3. **Modular Architecture**: Easy to add new agents or modify existing ones
+4. **Production-Ready Design**: Proper error handling, logging, and testing structure
 
-## 🚧 Roadmap
+### Real-World Application
 
-**Planned Features:**
-- Support for multiple languages (JavaScript, Java, Go)
-- GitHub PR integration for automated reviews
-- VS Code extension
-- Custom rule configuration
-- Team collaboration features
-- Historical review analytics
-- AI-powered fix generation
+- Solves actual code review challenges
+- Provides actionable feedback with specific line numbers
+- Grades code quality (A-F scale)
+- Prioritizes issues by severity
+- Demonstrates multi-agent systems at scale
 
 ---
 
 ## 📚 Documentation
 
-For detailed technical architecture, see [ARCHITECTURE.md](ARCHITECTURE.md)
-
-Topics covered:
-- Multi-agent system design
-- AutoGen group chat patterns
-- Tool integration architecture
-- Code execution sandboxing
-- Agent communication protocols
+For detailed technical architecture and implementation details:
+- [ARCHITECTURE.md](ARCHITECTURE.md) - Complete technical documentation
+- [API Documentation](#) - Coming soon
+- [Tutorial Videos](#) - Coming soon
 
 ---
 
 ## 🙏 Acknowledgments
 
-**AI Frameworks**
+**AI Frameworks:**
 - [Microsoft AutoGen](https://github.com/microsoft/autogen) - Multi-agent orchestration
 - [OpenAI API](https://openai.com/) - Language models
 
-**Analysis Tools**
-- [Pylint](https://pylint.org/) - Code linting
-- [Bandit](https://bandit.readthedocs.io/) - Security scanning
-- [Radon](https://radon.readthedocs.io/) - Complexity analysis
-- [Pytest](https://pytest.org/) - Testing framework
+**Analysis Tools:**
+- [Pylint](https://pylint.org/) - Python code analysis
+- [Bandit](https://bandit.readthedocs.io/) - Security linting
+- [Radon](https://radon.readthedocs.io/) - Code metrics
 
 ---
 
 ## 📄 License
 
-MIT License
+MIT License - See [LICENSE](LICENSE) file for details
 
 ---
 
 ## 👤 Author
 
 **Bryan LoLordo**
-- Specialization: Multi-Agent AI Systems, Code Analysis
-- Focus: Production-ready AI agents with Microsoft AutoGen
+- GitHub: [@bryan-lolordo](https://github.com/bryan-lolordo)
+- Focus: Multi-Agent AI Systems & Production ML
+- Portfolio: Demonstrating advanced AutoGen patterns
 
 ---
 
-**Built with ❤️ using Multi-Agent AI patterns**
+## 🎓 Learning Outcomes
 
-*Demonstrating advanced agent collaboration for code review automation* 🎯
+This project demonstrates proficiency in:
+
+✅ Multi-agent system architecture and design  
+✅ Microsoft AutoGen framework and group chat patterns  
+✅ LLM orchestration and prompt engineering  
+✅ Tool integration and API design  
+✅ Production-ready Python development  
+✅ Modular, testable, maintainable code architecture  
+
+---
+
+**Built with ❤️ using Multi-Agent AI**
+
+*Transforming code review through collaborative AI agents* 🚀

@@ -2,11 +2,12 @@
 Base Agent Class
 
 Abstract base class for all code review agents.
+Provides common interface and structure.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict
 import autogen
+from typing import Dict
 
 
 class BaseAgent(ABC):
@@ -18,7 +19,7 @@ class BaseAgent(ABC):
     """
     
     @abstractmethod
-    def create_agent(self) -> autogen.AssistantAgent:
+    def create_agent(self):
         """
         Create and return the AutoGen agent instance
         
@@ -34,18 +35,19 @@ class BaseAgent(ABC):
         
         Returns:
             Dictionary mapping function names to callable functions
+            Example: {'run_pylint': self.tools['linting'].run_pylint}
         """
         pass
     
     @abstractmethod
     def analyze(self, code: str) -> Dict:
         """
-        Perform high-level analysis on the provided code
+        Perform analysis on the provided code
         
         Args:
             code: Python source code to analyze
         
         Returns:
-            Analysis results dictionary
+            Dictionary containing analysis results
         """
         pass

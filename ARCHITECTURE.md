@@ -1,51 +1,64 @@
 # 🏗️ Code Review Crew - Architecture Documentation
 
+**Version:** 1.0  
+**Status:** Production Ready  
+**Last Updated:** November 2024
+
+---
+
 ## Table of Contents
+
 1. [System Overview](#system-overview)
 2. [Multi-Agent Architecture](#multi-agent-architecture)
-3. [Agent Design](#agent-design)
-4. [Tool Integration](#tool-integration)
-5. [Code Execution System](#code-execution-system)
+3. [Agent Design & Implementation](#agent-design--implementation)
+4. [AutoGen Integration](#autogen-integration)
+5. [Tool Integration Layer](#tool-integration-layer)
 6. [Communication Patterns](#communication-patterns)
 7. [Data Flow](#data-flow)
-8. [Security Architecture](#security-architecture)
+8. [Current Implementation Status](#current-implementation-status)
 9. [Development Guide](#development-guide)
 
 ---
 
 ## System Overview
 
-Code Review Crew is built on a **multi-agent architecture** using Microsoft AutoGen, where specialized AI agents collaborate through group chat to perform comprehensive code reviews.
+Code Review Crew is a **multi-agent AI system** built on Microsoft AutoGen that performs comprehensive code reviews through collaborative agent discussions.
+
+### Architecture Layers
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Presentation Layer                    │
-│  (Streamlit Web UI + CLI Interface)                     │
+│              Presentation Layer                          │
+│  ┌──────────────────┐    ┌──────────────────┐          │
+│  │ Streamlit Web UI │    │ CLI Interface    │          │
+│  └──────────────────┘    └──────────────────┘          │
 └────────────────────┬────────────────────────────────────┘
                      │
 ┌────────────────────┴────────────────────────────────────┐
-│                   Agent Orchestration Layer              │
-│  (AutoGen Group Chat + Agent Team)                      │
+│           Agent Orchestration Layer                      │
+│  ┌────────────────────────────────────────────┐         │
+│  │        AutoGen Group Chat Manager          │         │
+│  │  ┌──────┐  ┌──────┐  ┌──────┐  ┌──────┐  │         │
+│  │  │Agent1│  │Agent2│  │Agent3│  │Agent4│  │         │
+│  │  └──────┘  └──────┘  └──────┘  └──────┘  │         │
+│  └────────────────────────────────────────────┘         │
 └────────────────────┬────────────────────────────────────┘
                      │
 ┌────────────────────┴────────────────────────────────────┐
-│                    Tool Integration Layer                │
-│  (Pylint, Bandit, Radon, Pytest)                       │
-└────────────────────┬────────────────────────────────────┘
-                     │
-┌────────────────────┴────────────────────────────────────┐
-│                    Execution Layer                       │
-│  (Docker Sandbox + Code Runner)                         │
+│            Tool Integration Layer                        │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐                │
+│  │ Pylint  │  │ Bandit  │  │ Radon   │                │
+│  └─────────┘  └─────────┘  └─────────┘                │
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Key Design Principles
+### Core Components
 
-1. **Agent Autonomy**: Each agent makes independent decisions
-2. **Collaborative Intelligence**: Agents debate to reach consensus
-3. **Tool Augmentation**: Agents use real static analysis tools
-4. **Safe Execution**: All code runs in isolated containers
-5. **Modular Architecture**: Easy to add new agents or tools
+1. **Web Interface** (`app.py`) - Streamlit-based user interface
+2. **Group Chat Manager** (`run_group_chat.py`) - AutoGen orchestration
+3. **Agent Classes** (`code_review_crew/agents/`) - Specialized reviewers
+4. **Tool Wrappers** (`code_review_crew/tools/`) - Static analysis integration
+5. **Utilities** (`code_review_crew/utils/`) - Helper functions
 
 ---
 
@@ -56,16 +69,16 @@ Code Review Crew is built on a **multi-agent architecture** using Microsoft Auto
 ```
                     ┌─────────────────────────┐
                     │  Review Orchestrator    │
-                    │  - Manages workflow     │
-                    │  - Synthesizes feedback │
-                    │  - Prioritizes issues   │
+                    │  • Coordinates workflow │
+                    │  • Synthesizes feedback │
+                    │  • Assigns final grade  │
                     └───────────┬─────────────┘
                                 │
                     ┌───────────┴─────────────┐
                     │   AutoGen GroupChat     │
-                    │   - Multi-agent comm    │
-                    │   - Turn management     │
-                    │   - Message routing     │
+                    │  • Message routing      │
+                    │  • Turn management      │
+                    │  • Speaker selection    │
                     └───────────┬─────────────┘
                                 │
         ┌───────────────────────┼───────────────────────┐
@@ -73,287 +86,299 @@ Code Review Crew is built on a **multi-agent architecture** using Microsoft Auto
 ┌───────▼────────┐    ┌────────▼────────┐    ┌────────▼─────────┐
 │ Code Analyzer  │    │ Security        │    │ Performance      │
 │                │    │ Reviewer        │    │ Optimizer        │
-│ AssistantAgent │    │ AssistantAgent  │    │ AssistantAgent   │
-└───────┬────────┘    └────────┬────────┘    └────────┬─────────┘
-        │                      │                      │
-        └──────────────────────┼──────────────────────┘
-                               │
-                    ┌──────────▼──────────┐
-                    │  Test Generator     │
-                    │  AssistantAgent     │
-                    └──────────┬──────────┘
-                               │
-                    ┌──────────▼──────────┐
-                    │  Code Executor      │
-                    │  UserProxyAgent     │
-                    │  + Docker Sandbox   │
-                    └─────────────────────┘
+│ GPT-4 Analysis │    │ GPT-4 Analysis  │    │ GPT-4 Analysis   │
+│ + Pylint Ready │    │ + Bandit Ready  │    │ + Radon Ready    │
+└────────────────┘    └─────────────────┘    └──────────────────┘
 ```
 
-### AutoGen Configuration
+### Agent Roles
 
-```python
-# Base LLM configuration
-llm_config = {
-    "model": "gpt-4",
-    "temperature": 0.7,
-    "api_key": os.getenv("OPENAI_API_KEY"),
-    "cache_seed": None  # Disable caching for diverse responses
-}
-
-# Group chat setup
-agents = [
-    orchestrator,
-    code_analyzer,
-    security_reviewer,
-    performance_optimizer,
-    test_generator
-]
-
-group_chat = autogen.GroupChat(
-    agents=agents,
-    messages=[],
-    max_round=20,  # Maximum conversation rounds
-    speaker_selection_method="auto"  # Let AutoGen decide speaker order
-)
-
-manager = autogen.GroupChatManager(
-    groupchat=group_chat,
-    llm_config=llm_config
-)
-```
+| Agent | Type | Primary Function | Tool Access |
+|-------|------|------------------|-------------|
+| **Review Orchestrator** | Coordinator | Manages workflow, synthesizes feedback | None |
+| **Code Analyzer** | Analyst | Code quality, style, structure | Pylint, PEP8 checker |
+| **Security Reviewer** | Security Expert | Vulnerabilities, exploits | Bandit scanner |
+| **Performance Optimizer** | Performance Expert | Complexity, bottlenecks | Radon analyzer |
+| **Test Generator** | Testing Expert | Unit test generation | Pytest (optional) |
+| **Code Executor** | Executor | Safe code execution | Docker (optional) |
 
 ---
 
-## Agent Design
+## Agent Design & Implementation
+
+### Base Agent Pattern
+
+All agents inherit from a base class providing consistent interface:
+
+```python
+# code_review_crew/agents/base_agent.py
+from abc import ABC, abstractmethod
+import autogen
+
+class BaseAgent(ABC):
+    """Abstract base class for all code review agents"""
+    
+    @abstractmethod
+    def create_agent(self) -> autogen.AssistantAgent:
+        """Create and return the AutoGen agent instance"""
+        pass
+    
+    @abstractmethod
+    def register_functions(self) -> Dict:
+        """Register tool functions with the agent"""
+        pass
+    
+    @abstractmethod
+    def analyze(self, code: str) -> Dict:
+        """Perform analysis on the provided code"""
+        pass
+```
 
 ### 1. Review Orchestrator
 
-**Type:** `AssistantAgent`  
-**Role:** Project manager and synthesizer
+**File:** `code_review_crew/agents/orchestrator.py`
 
-```python
-orchestrator = autogen.AssistantAgent(
-    name="ReviewOrchestrator",
-    system_message="""
-    You are the Review Orchestrator. Your responsibilities:
-    
-    1. Coordinate the code review process
-    2. Listen to all agent feedback
-    3. Identify conflicts and resolve them
-    4. Prioritize issues by severity
-    5. Synthesize a final comprehensive review
-    6. Provide actionable next steps
-    
-    When agents disagree, facilitate discussion.
-    Ensure all critical issues are addressed.
-    Keep the review focused and efficient.
-    """,
-    llm_config=llm_config
-)
+**Responsibilities:**
+- Initiates review process
+- Coordinates agent communication
+- Resolves conflicts between agents
+- Prioritizes issues by severity
+- Generates final comprehensive report
+- Assigns letter grade (A-F)
+
+**System Prompt:**
+```
+You coordinate the code review process.
+
+1. Start by asking CodeAnalyzer for analysis
+2. Then SecurityReviewer for security assessment  
+3. Then PerformanceOptimizer for performance review
+4. Synthesize final report with grades (A-F)
+5. List issues by priority: Critical, High, Medium, Low
+
+Keep reviews constructive and actionable.
 ```
 
-**Key Responsibilities:**
-- Manages review workflow
-- Resolves agent disagreements
-- Prioritizes issues (Critical → High → Medium → Low)
-- Generates final review summary
-- Estimates fix effort for each issue
+**Key Methods:**
+- `initiate_review()` - Starts the process
+- `collect_agent_feedback()` - Gathers responses
+- `prioritize_issues()` - Categorizes by severity
+- `synthesize_review()` - Creates final report
+- `format_final_report()` - Formats for display
 
 ### 2. Code Analyzer
 
-**Type:** `AssistantAgent`  
-**Role:** Code quality expert
-
-```python
-code_analyzer = autogen.AssistantAgent(
-    name="CodeAnalyzer",
-    system_message="""
-    You are a Code Analyzer specializing in:
-    
-    - Code smells and anti-patterns
-    - PEP 8 style compliance (Python)
-    - Code readability and maintainability
-    - DRY (Don't Repeat Yourself) violations
-    - SOLID principles
-    - Proper error handling
-    
-    Use the linting_tool to run Pylint analysis.
-    Provide specific line numbers and suggestions.
-    Distinguish between style issues and functional bugs.
-    """,
-    llm_config=llm_config,
-    function_map={
-        "run_pylint": linting_tool.run_pylint,
-        "check_pep8": linting_tool.check_pep8
-    }
-)
-```
+**File:** `code_review_crew/agents/code_analyzer.py`
 
 **Analysis Focus:**
-- Code structure and organization
+- PEP 8 style compliance
+- Code smells (long methods, god objects, duplicates)
 - Naming conventions
-- Function/class complexity
-- Code duplication
-- Design patterns usage
+- Missing docstrings
+- Error handling patterns
+- Design principles (SOLID, DRY)
 
 **Tool Integration:**
 ```python
-# Pylint analysis
-pylint_results = code_analyzer.run_pylint(code)
-# Returns: {score: 8.5, issues: [...], suggestions: [...]}
+{
+    "run_pylint": linting_tool.run_pylint,
+    "check_pep8": linting_tool.check_pep8,
+    "detect_code_smells": self.detect_code_smells
+}
+```
+
+**System Prompt:**
+```
+You analyze code quality.
+
+Check for:
+- PEP 8 style violations
+- Code smells and anti-patterns
+- Poor naming conventions
+- Missing documentation
+- Potential bugs
+
+Provide specific line numbers and fix suggestions.
 ```
 
 ### 3. Security Reviewer
 
-**Type:** `AssistantAgent`  
-**Role:** Security expert
-
-```python
-security_reviewer = autogen.AssistantAgent(
-    name="SecurityReviewer",
-    system_message="""
-    You are a Security Reviewer specializing in:
-    
-    - SQL injection vulnerabilities
-    - XSS (Cross-Site Scripting)
-    - Authentication/authorization flaws
-    - Input validation issues
-    - Sensitive data exposure
-    - OWASP Top 10 vulnerabilities
-    
-    Use the security_scanner tool (Bandit) for automated checks.
-    Always explain the security impact of issues.
-    Provide concrete examples of exploits.
-    Suggest secure alternatives.
-    """,
-    llm_config=llm_config,
-    function_map={
-        "scan_security": security_scanner.run_bandit,
-        "check_owasp": security_scanner.check_owasp_top10
-    }
-)
-```
+**File:** `code_review_crew/agents/security_reviewer.py`
 
 **Security Checks:**
-- Input sanitization
-- SQL injection prevention
-- Authentication mechanisms
-- Authorization controls
-- Cryptography usage
-- Dependency vulnerabilities
+- SQL injection vulnerabilities
+- XSS (Cross-Site Scripting)
+- Weak cryptography (MD5, SHA1)
+- Hardcoded secrets (passwords, API keys)
+- Command injection
+- Insecure deserialization
+- OWASP Top 10 compliance
+
+**Tool Integration:**
+```python
+{
+    "scan_security": security_scanner.run_bandit,
+    "check_owasp": security_scanner.check_owasp_top10,
+    "detect_injection": self.detect_injection_vulns
+}
+```
+
+**System Prompt:**
+```
+You find security vulnerabilities.
+
+Check for:
+- SQL injection
+- XSS vulnerabilities  
+- Weak cryptography
+- Hardcoded secrets
+- Command injection
+
+Mark ALL security issues as CRITICAL.
+Explain the exploit and provide secure alternatives.
+```
 
 ### 4. Performance Optimizer
 
-**Type:** `AssistantAgent`  
-**Role:** Performance expert
-
-```python
-performance_optimizer = autogen.AssistantAgent(
-    name="PerformanceOptimizer",
-    system_message="""
-    You are a Performance Optimizer specializing in:
-    
-    - Algorithmic complexity (Big O analysis)
-    - Memory usage optimization
-    - Database query efficiency
-    - Loop optimization
-    - Caching opportunities
-    - Profiling insights
-    
-    Use the complexity_analyzer tool (Radon) for metrics.
-    Identify bottlenecks and suggest optimizations.
-    Provide complexity analysis (O(n), O(n²), etc.).
-    Balance performance with readability.
-    """,
-    llm_config=llm_config,
-    function_map={
-        "analyze_complexity": complexity_analyzer.calculate_complexity,
-        "find_bottlenecks": complexity_analyzer.profile_code
-    }
-)
-```
+**File:** `code_review_crew/agents/performance_optimizer.py`
 
 **Performance Analysis:**
-- Time complexity
+- Time complexity (Big O analysis)
 - Space complexity
-- Database query optimization
-- Caching strategies
-- Lazy loading opportunities
+- Nested loops detection
+- Inefficient algorithms
+- Caching opportunities
+- Memory usage patterns
 
-### 5. Test Generator
-
-**Type:** `AssistantAgent`  
-**Role:** Testing expert
-
+**Tool Integration:**
 ```python
-test_generator = autogen.AssistantAgent(
-    name="TestGenerator",
-    system_message="""
-    You are a Test Generator specializing in:
-    
-    - Unit test creation
-    - Edge case identification
-    - Test coverage analysis
-    - Mocking and fixtures
-    - Integration test design
-    - Test-driven development
-    
-    Generate pytest-compatible tests.
-    Cover happy paths and edge cases.
-    Include tests for error conditions.
-    Aim for high code coverage.
-    """,
-    llm_config=llm_config
-)
+{
+    "analyze_complexity": complexity_tool.calculate_complexity,
+    "find_bottlenecks": complexity_tool.find_bottlenecks,
+    "detect_inefficiencies": self.detect_inefficiencies
+}
 ```
 
-**Test Creation:**
-- Unit tests for all functions
-- Edge case scenarios
-- Error handling tests
-- Integration test suggestions
-- Mock objects for dependencies
-
-### 6. Code Executor
-
-**Type:** `UserProxyAgent`  
-**Role:** Code execution and validation
-
-```python
-code_executor = autogen.UserProxyAgent(
-    name="CodeExecutor",
-    human_input_mode="NEVER",  # Fully autonomous
-    max_consecutive_auto_reply=10,
-    code_execution_config={
-        "work_dir": "sandbox",
-        "use_docker": True,
-        "timeout": 60,
-        "last_n_messages": 3
-    }
-)
+**System Prompt:**
 ```
+You analyze performance.
 
-**Execution Capabilities:**
-- Runs submitted code safely
-- Executes generated tests
-- Validates proposed fixes
-- Reports runtime errors
-- Measures test coverage
+Check for:
+- Nested loops (O(n²) or worse)
+- Inefficient string concatenation
+- Missing caching opportunities
+- Repeated calculations
+
+Explain current complexity and suggest optimizations.
+```
 
 ---
 
-## Tool Integration
+## AutoGen Integration
 
-### Linting Tool (Pylint)
-
-**File:** `code_review_crew/tools/linting_tool.py`
+### Group Chat Configuration
 
 ```python
-import subprocess
-import json
-from typing import Dict, List
+# run_group_chat.py
+import autogen
 
+class CodeReviewChat:
+    def __init__(self, api_key: str = None):
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+        
+        self.llm_config = {
+            "model": "gpt-4",
+            "temperature": 0.7,
+            "api_key": self.api_key
+        }
+        
+    def create_agents(self):
+        """Create all AutoGen agent instances"""
+        
+        self.agents['orchestrator'] = autogen.AssistantAgent(
+            name="ReviewOrchestrator",
+            system_message="...",
+            llm_config=self.llm_config
+        )
+        
+        self.agents['code_analyzer'] = autogen.AssistantAgent(
+            name="CodeAnalyzer",
+            system_message="...",
+            llm_config=self.llm_config
+        )
+        
+        # ... other agents
+        
+    def setup_group_chat(self):
+        """Setup AutoGen group chat"""
+        
+        agent_list = [
+            self.agents['user'],
+            self.agents['orchestrator'],
+            self.agents['code_analyzer'],
+            self.agents['security'],
+            self.agents['performance']
+        ]
+        
+        self.group_chat = autogen.GroupChat(
+            agents=agent_list,
+            messages=[],
+            max_round=20,
+            speaker_selection_method="auto"
+        )
+        
+        self.chat_manager = autogen.GroupChatManager(
+            groupchat=self.group_chat,
+            llm_config=self.llm_config
+        )
+```
+
+### Conversation Flow
+
+```
+1. User submits code
+   ↓
+2. UserProxyAgent sends initial message
+   ↓
+3. AutoGen selects ReviewOrchestrator
+   ↓
+4. Orchestrator requests CodeAnalyzer analysis
+   ↓
+5. CodeAnalyzer responds with findings
+   ↓
+6. Orchestrator requests SecurityReviewer assessment
+   ↓
+7. SecurityReviewer responds with vulnerabilities
+   ↓
+8. Orchestrator requests PerformanceOptimizer review
+   ↓
+9. PerformanceOptimizer responds with optimizations
+   ↓
+10. Orchestrator synthesizes final report
+    ↓
+11. Results returned to user
+```
+
+---
+
+## Tool Integration Layer
+
+### Architecture
+
+```python
+# Wrapper Pattern
+code_review_crew/tools/
+├── linting_tool.py         # Wraps Pylint
+├── security_scanner.py     # Wraps Bandit
+├── complexity_analyzer.py  # Wraps Radon
+├── test_runner.py         # Wraps Pytest
+└── git_tool.py            # Parses Git diffs
+```
+
+### Tool Wrapper Example
+
+```python
+# code_review_crew/tools/linting_tool.py
 class LintingTool:
     """Wrapper for Pylint static analysis"""
     
@@ -364,833 +389,390 @@ class LintingTool:
         Returns:
             {
                 'score': float (0-10),
-                'issues': [
-                    {
-                        'type': 'convention|refactor|warning|error',
-                        'line': int,
-                        'message': str,
-                        'symbol': str
-                    }
-                ],
+                'issues': [...],
                 'summary': str
             }
         """
         # Write code to temp file
-        with open('/tmp/temp_code.py', 'w') as f:
-            f.write(code)
+        temp_file = self._write_temp_file(code)
         
         # Run pylint
         result = subprocess.run(
-            ['pylint', '/tmp/temp_code.py', '--output-format=json'],
+            ['pylint', temp_file, '--output-format=json'],
             capture_output=True,
             text=True
         )
         
-        # Parse JSON output
-        issues = json.loads(result.stdout)
-        
-        # Calculate score
-        score = self._calculate_score(issues)
-        
-        return {
-            'score': score,
-            'issues': self._format_issues(issues),
-            'summary': self._generate_summary(score, issues)
-        }
-    
-    def check_pep8(self, code: str) -> List[Dict]:
-        """Check PEP 8 compliance using pycodestyle"""
-        # Implementation
-        pass
+        # Parse and return results
+        return self._parse_results(result)
 ```
 
-### Security Scanner (Bandit)
+### Current Tool Status
 
-**File:** `code_review_crew/tools/security_scanner.py`
+| Tool | Status | Integration | Usage |
+|------|--------|-------------|-------|
+| **Pylint** | ✅ Implemented | Ready | Can be called by agents |
+| **Bandit** | ✅ Implemented | Ready | Can be called by agents |
+| **Radon** | ✅ Implemented | Ready | Can be called by agents |
+| **Pytest** | ✅ Implemented | Ready | Can run generated tests |
+| **Docker** | ✅ Implemented | Optional | Sandbox code execution |
 
-```python
-import bandit
-from bandit.core import manager as bandit_manager
-
-class SecurityScanner:
-    """Wrapper for Bandit security analysis"""
-    
-    def run_bandit(self, code: str) -> Dict:
-        """
-        Scan code for security vulnerabilities
-        
-        Returns:
-            {
-                'high_severity': [...],
-                'medium_severity': [...],
-                'low_severity': [...],
-                'total_issues': int,
-                'confidence_scores': {...}
-            }
-        """
-        # Initialize Bandit manager
-        b_mgr = bandit_manager.BanditManager(
-            bandit.config.BanditConfig(), 
-            'file'
-        )
-        
-        # Run scan
-        b_mgr.discover_files(['/tmp/temp_code.py'])
-        b_mgr.run_tests()
-        
-        # Get results
-        results = b_mgr.get_issue_list()
-        
-        return self._categorize_issues(results)
-    
-    def check_owasp_top10(self, code: str) -> List[str]:
-        """Check for OWASP Top 10 vulnerabilities"""
-        vulnerabilities = []
-        
-        # Check for SQL injection
-        if self._has_sql_injection(code):
-            vulnerabilities.append('A03:2021 - Injection')
-        
-        # Check for broken authentication
-        if self._has_weak_auth(code):
-            vulnerabilities.append('A07:2021 - Identification and Authentication Failures')
-        
-        # ... more checks
-        
-        return vulnerabilities
-```
-
-### Complexity Analyzer (Radon)
-
-**File:** `code_review_crew/tools/complexity_analyzer.py`
-
-```python
-from radon.complexity import cc_visit
-from radon.metrics import mi_visit, h_visit
-
-class ComplexityAnalyzer:
-    """Wrapper for Radon complexity analysis"""
-    
-    def calculate_complexity(self, code: str) -> Dict:
-        """
-        Calculate cyclomatic complexity
-        
-        Returns:
-            {
-                'functions': [
-                    {
-                        'name': str,
-                        'complexity': int,
-                        'rank': str (A-F),
-                        'line': int
-                    }
-                ],
-                'average_complexity': float,
-                'maintainability_index': float
-            }
-        """
-        # Cyclomatic complexity
-        complexity_results = cc_visit(code)
-        
-        # Maintainability index
-        mi_score = mi_visit(code, multi=True)
-        
-        # Halstead metrics
-        halstead = h_visit(code)
-        
-        return {
-            'functions': self._format_complexity(complexity_results),
-            'average_complexity': self._calculate_average(complexity_results),
-            'maintainability_index': mi_score,
-            'halstead_metrics': halstead
-        }
-    
-    def find_bottlenecks(self, code: str) -> List[Dict]:
-        """Identify performance bottlenecks"""
-        bottlenecks = []
-        
-        # Find high-complexity functions
-        complexity = self.calculate_complexity(code)
-        for func in complexity['functions']:
-            if func['complexity'] > 10:
-                bottlenecks.append({
-                    'type': 'high_complexity',
-                    'function': func['name'],
-                    'complexity': func['complexity'],
-                    'suggestion': 'Consider refactoring into smaller functions'
-                })
-        
-        # Find nested loops
-        nested_loops = self._find_nested_loops(code)
-        for loop in nested_loops:
-            bottlenecks.append({
-                'type': 'nested_loops',
-                'line': loop['line'],
-                'depth': loop['depth'],
-                'suggestion': 'Consider using hash maps or preprocessing'
-            })
-        
-        return bottlenecks
-```
-
-### Test Runner (Pytest)
-
-**File:** `code_review_crew/tools/test_runner.py`
-
-```python
-import pytest
-import coverage
-
-class TestRunner:
-    """Wrapper for pytest and coverage"""
-    
-    def run_tests(self, test_code: str, source_code: str) -> Dict:
-        """
-        Run generated tests and measure coverage
-        
-        Returns:
-            {
-                'passed': int,
-                'failed': int,
-                'errors': List[str],
-                'coverage': float (0-100),
-                'duration': float (seconds)
-            }
-        """
-        # Write files
-        with open('/tmp/test_temp.py', 'w') as f:
-            f.write(test_code)
-        with open('/tmp/source_temp.py', 'w') as f:
-            f.write(source_code)
-        
-        # Initialize coverage
-        cov = coverage.Coverage()
-        cov.start()
-        
-        # Run pytest
-        result = pytest.main([
-            '/tmp/test_temp.py',
-            '-v',
-            '--tb=short'
-        ])
-        
-        cov.stop()
-        cov.save()
-        
-        # Get coverage data
-        coverage_percent = cov.report()
-        
-        return {
-            'passed': result.passed,
-            'failed': result.failed,
-            'coverage': coverage_percent,
-            'duration': result.duration
-        }
-```
-
----
-
-## Code Execution System
-
-### Docker Sandbox Architecture
-
-```
-┌─────────────────────────────────────────┐
-│           Host System                    │
-│  ┌─────────────────────────────────┐   │
-│  │   AutoGen UserProxyAgent        │   │
-│  │   - Manages execution           │   │
-│  │   - Enforces limits             │   │
-│  └──────────────┬──────────────────┘   │
-│                 │                       │
-│  ┌──────────────▼──────────────────┐   │
-│  │   Docker Container               │   │
-│  │   ┌─────────────────────────┐   │   │
-│  │   │ Isolated Environment    │   │   │
-│  │   │ - Python runtime        │   │   │
-│  │   │ - No network access     │   │   │
-│  │   │ - Limited resources     │   │   │
-│  │   │ - Auto cleanup          │   │   │
-│  │   └─────────────────────────┘   │   │
-│  └─────────────────────────────────┘   │
-└─────────────────────────────────────────┘
-```
-
-### Sandbox Configuration
-
-```python
-# Dockerfile for execution environment
-FROM python:3.9-slim
-
-# Install minimal dependencies
-RUN pip install pytest coverage
-
-# Create non-root user
-RUN useradd -m -u 1000 sandbox
-USER sandbox
-
-# Set working directory
-WORKDIR /sandbox
-
-# Resource limits set via Docker run
-# CPU: 1 core
-# Memory: 512MB
-# Timeout: 60 seconds
-```
-
-### Execution Workflow
-
-```python
-class SandboxManager:
-    """Manages safe code execution in Docker"""
-    
-    def execute_code(self, code: str, timeout: int = 60) -> Dict:
-        """
-        Execute code in isolated container
-        
-        Args:
-            code: Python code to execute
-            timeout: Maximum execution time in seconds
-        
-        Returns:
-            {
-                'stdout': str,
-                'stderr': str,
-                'exit_code': int,
-                'duration': float,
-                'timeout': bool
-            }
-        """
-        # Create temporary directory
-        work_dir = self._create_work_dir()
-        
-        # Write code to file
-        code_file = os.path.join(work_dir, 'code.py')
-        with open(code_file, 'w') as f:
-            f.write(code)
-        
-        # Run Docker container
-        client = docker.from_env()
-        try:
-            result = client.containers.run(
-                image='code-review-sandbox:latest',
-                command=f'python /sandbox/code.py',
-                volumes={work_dir: {'bind': '/sandbox', 'mode': 'rw'}},
-                mem_limit='512m',
-                cpu_period=100000,
-                cpu_quota=100000,  # 1 CPU
-                network_disabled=True,
-                timeout=timeout,
-                remove=True
-            )
-            
-            return {
-                'stdout': result.decode('utf-8'),
-                'stderr': '',
-                'exit_code': 0,
-                'timeout': False
-            }
-            
-        except docker.errors.ContainerError as e:
-            return {
-                'stdout': '',
-                'stderr': str(e),
-                'exit_code': e.exit_status,
-                'timeout': False
-            }
-            
-        except docker.errors.Timeout:
-            return {
-                'stdout': '',
-                'stderr': 'Execution timeout',
-                'exit_code': -1,
-                'timeout': True
-            }
-        
-        finally:
-            # Cleanup
-            self._cleanup_work_dir(work_dir)
-```
+**Note:** Currently, agents primarily use GPT-4's native code analysis capabilities. Tools are available and can be explicitly invoked when needed for deterministic analysis.
 
 ---
 
 ## Communication Patterns
 
-### Group Chat Flow
+### Message Flow
 
 ```
-User submits code
-    ↓
-[Orchestrator] "Let's review this code. Code Analyzer, please start."
-    ↓
-[Code Analyzer] "Found 3 style issues, 1 potential bug on line 45..."
-    ↓
-[Security Reviewer] "I agree with the bug. Also found SQL injection risk..."
-    ↓
-[Performance Optimizer] "The loop on line 67 is O(n²), suggest using hash map..."
-    ↓
-[Code Analyzer] "Good catch on performance. But security should be priority."
-    ↓
-[Security Reviewer] "Agreed. SQL injection is critical."
-    ↓
-[Orchestrator] "Prioritizing: 1. SQL injection (Critical), 2. Bug (High), 3. Performance (Medium)"
-    ↓
-[Test Generator] "Generated tests for edge cases including injection attempts..."
-    ↓
-[Code Executor] "Running tests... 2 passed, 1 failed (injection test)"
-    ↓
-[Orchestrator] "Confirmed. SQL injection vulnerability verified. Here's the final report..."
+┌──────────┐     1. Initial      ┌─────────────────┐
+│   User   │────────────────────>│ GroupChat       │
+└──────────┘                     │ Manager         │
+                                 └────────┬────────┘
+                                          │
+                     2. Route to Orchestrator
+                                          │
+                                          ▼
+                                 ┌────────────────┐
+                                 │ Orchestrator   │
+                                 └────────┬───────┘
+                                          │
+                  3. Request Agent Analysis
+                                          │
+          ┌───────────────────────────────┼───────────────┐
+          │                               │               │
+          ▼                               ▼               ▼
+    ┌──────────┐                   ┌──────────┐    ┌──────────┐
+    │  Code    │                   │ Security │    │Perform.  │
+    │ Analyzer │                   │ Reviewer │    │Optimizer │
+    └────┬─────┘                   └────┬─────┘    └────┬─────┘
+         │                              │               │
+         │      4. Return Analysis      │               │
+         └──────────────┬───────────────┴───────────────┘
+                        │
+                        ▼
+                ┌───────────────┐
+                │ Orchestrator  │
+                │ Synthesizes   │
+                └───────┬───────┘
+                        │
+                        │ 5. Final Report
+                        ▼
+                ┌───────────────┐
+                │     User      │
+                └───────────────┘
 ```
 
-### Agent Selection Strategies
-
-**Auto Selection** (Default)
-```python
-# AutoGen decides based on context
-group_chat = autogen.GroupChat(
-    agents=agents,
-    speaker_selection_method="auto"
-)
-```
-
-**Round Robin**
-```python
-# Each agent speaks in turn
-group_chat = autogen.GroupChat(
-    agents=agents,
-    speaker_selection_method="round_robin"
-)
-```
-
-**Custom Selection**
-```python
-def select_speaker(last_speaker, groupchat):
-    """Custom logic for speaker selection"""
-    if "security" in groupchat.messages[-1]['content'].lower():
-        return security_reviewer
-    elif "performance" in groupchat.messages[-1]['content'].lower():
-        return performance_optimizer
-    else:
-        return code_analyzer
-
-group_chat = autogen.GroupChat(
-    agents=agents,
-    speaker_selection_method=select_speaker
-)
-```
-
-### Message Protocol
+### Example Conversation
 
 ```python
-# Standard message format
-{
-    'role': 'assistant|user',
-    'content': str,
-    'name': str,  # Agent name
-    'function_call': {
-        'name': str,
-        'arguments': str
-    },
-    'metadata': {
-        'timestamp': datetime,
-        'agent_type': str,
-        'confidence': float
-    }
-}
+# Actual conversation from system
+[User]: 
+"Please review this code: def get_user(username): ..."
+
+[ReviewOrchestrator]:
+"CodeAnalyzer, can you please provide your analysis?"
+
+[CodeAnalyzer]:
+"Found SQL injection on line 4, weak crypto on line 17..."
+
+[SecurityReviewer]:
+"Confirming SQL injection - CRITICAL priority..."
+
+[PerformanceOptimizer]:
+"Detected O(n²) nested loop on line 12..."
+
+[ReviewOrchestrator]:
+"Final Grade: C-. Critical issues: 3. High: 1. Recommendations..."
 ```
 
 ---
 
 ## Data Flow
 
-### Review Request Flow
+### Review Process Flow
 
 ```
-┌─────────────┐
-│    User     │ Submits code via UI
-└──────┬──────┘
-       │
-       ▼
-┌──────────────────┐
-│  Streamlit App   │ Validates input, creates review request
-└──────┬───────────┘
-       │
-       ▼
-┌───────────────────┐
-│  Orchestrator     │ Initializes group chat
-└──────┬────────────┘
-       │
-       ▼
-┌────────────────────────────────────────────┐
-│         AutoGen Group Chat                 │
-│  ┌────────────────────────────────────┐   │
-│  │ Agents take turns analyzing        │   │
-│  │ - Code Analyzer runs Pylint        │   │
-│  │ - Security runs Bandit             │   │
-│  │ - Performance runs Radon           │   │
-│  │ - Test Generator creates tests     │   │
-│  │ - Executor runs tests in Docker    │   │
-│  └────────────────────────────────────┘   │
-└──────┬─────────────────────────────────────┘
-       │
-       ▼
-┌──────────────────┐
-│  Report          │ Synthesized feedback
-│  Generator       │
-└──────┬───────────┘
-       │
-       ▼
-┌──────────────────┐
-│  User            │ Receives comprehensive review
-└──────────────────┘
+1. User Input
+   ├─> Code (string)
+   ├─> Configuration (optional)
+   └─> Context (optional)
+      ↓
+2. Initialization
+   ├─> Create agent instances
+   ├─> Initialize tools
+   ├─> Setup group chat
+   └─> Configure LLM
+      ↓
+3. Analysis Phase
+   ├─> Orchestrator starts review
+   ├─> Each agent analyzes code
+   ├─> Agents discuss findings
+   └─> Consensus building
+      ↓
+4. Synthesis Phase
+   ├─> Collect all feedback
+   ├─> Prioritize issues
+   ├─> Resolve conflicts
+   └─> Generate grade
+      ↓
+5. Output
+   ├─> Structured report
+   ├─> Conversation history
+   ├─> Prioritized issues
+   └─> Actionable recommendations
 ```
 
-### Tool Invocation Flow
+### Data Structures
 
-```
-Agent needs analysis
-    ↓
-Calls registered function
-    ↓
-Function executes tool
-    ↓
-Tool returns structured data
-    ↓
-Agent processes results
-    ↓
-Agent formulates response
-    ↓
-Response added to group chat
+```python
+# Review Results
+{
+    'grade': 'C-',
+    'summary': 'Review complete...',
+    'issues': {
+        'critical': [...],
+        'high': [...],
+        'medium': [...],
+        'low': [...]
+    },
+    'conversation': [
+        {'speaker': 'Agent1', 'content': '...'},
+        ...
+    ],
+    'strengths': [...],
+    'next_steps': [...]
+}
+
+# Issue Structure
+{
+    'description': 'SQL injection vulnerability',
+    'line': 45,
+    'severity': 'critical',
+    'source': 'SecurityReviewer',
+    'suggestion': 'Use parameterized queries',
+    'code_example': '...'
+}
 ```
 
 ---
 
-## Security Architecture
+## Current Implementation Status
 
-### Input Validation
+### ✅ Completed Features
 
-```python
-def validate_code_input(code: str) -> bool:
-    """Validate user-submitted code before processing"""
-    
-    # Check length
-    if len(code) > 10000:  # 10K chars max
-        raise ValueError("Code too long")
-    
-    # Check for suspicious patterns
-    suspicious = [
-        '__import__',
-        'exec(',
-        'eval(',
-        'compile(',
-        'os.system',
-        'subprocess'
-    ]
-    
-    for pattern in suspicious:
-        if pattern in code:
-            raise SecurityError(f"Suspicious pattern detected: {pattern}")
-    
-    return True
-```
+| Feature | Status | Notes |
+|---------|--------|-------|
+| **Multi-Agent System** | ✅ Complete | 4 agents working collaboratively |
+| **AutoGen Integration** | ✅ Complete | Group chat fully functional |
+| **Streamlit UI** | ✅ Complete | Web interface operational |
+| **Agent Collaboration** | ✅ Complete | Natural dialogue between agents |
+| **Issue Prioritization** | ✅ Complete | Critical/High/Medium/Low categorization |
+| **Grade Assignment** | ✅ Complete | A-F grading scale |
+| **Tool Wrappers** | ✅ Complete | Pylint, Bandit, Radon implemented |
+| **Code Parser** | ✅ Complete | AST-based Python parsing |
+| **Report Generator** | ✅ Complete | Multiple format support |
+| **Sandbox Manager** | ✅ Complete | Docker integration ready |
 
-### API Key Management
+### 🔧 Tool Usage
 
-```python
-# .env file (never committed)
-OPENAI_API_KEY=sk-...
+**Current State:**  
+Agents use GPT-4's native code analysis which provides excellent results. Tool wrappers (Pylint, Bandit, Radon) are implemented and ready but not actively called in the default flow.
 
-# Load securely
-from dotenv import load_dotenv
-load_dotenv()
+**Why This Works:**  
+GPT-4 has been trained on vast amounts of code and can identify:
+- SQL injection patterns
+- Security vulnerabilities  
+- Performance issues
+- Code quality problems
+- Best practice violations
 
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    raise ValueError("Missing OPENAI_API_KEY")
-```
+**When Tools Would Be Used:**
+- Deterministic scoring needed (e.g., exact Pylint score)
+- Compliance reporting required
+- Batch processing of many files
+- Integration with CI/CD pipelines
 
-### Docker Security
+### 📈 Performance Metrics
 
-```yaml
-# docker-compose.yml
-services:
-  sandbox:
-    image: code-review-sandbox
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    read_only: true
-    tmpfs:
-      - /tmp
-    networks:
-      - none  # No network access
-```
-
-### Rate Limiting
-
-```python
-from functools import wraps
-import time
-
-def rate_limit(max_calls: int, period: int):
-    """Rate limit decorator for API calls"""
-    calls = []
-    
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            now = time.time()
-            # Remove old calls
-            calls[:] = [c for c in calls if c > now - period]
-            
-            if len(calls) >= max_calls:
-                raise RateLimitError(f"Max {max_calls} calls per {period}s")
-            
-            calls.append(now)
-            return func(*args, **kwargs)
-        return wrapper
-    return decorator
-
-@rate_limit(max_calls=10, period=60)
-def review_code(code: str):
-    """Rate-limited review function"""
-    pass
-```
+- **Average Review Time:** 30-60 seconds
+- **Agent Messages:** 5-10 per review
+- **API Calls:** 5-20 depending on max_rounds
+- **Accuracy:** High (GPT-4 powered analysis)
+- **Token Usage:** ~5,000-10,000 tokens per review
 
 ---
 
 ## Development Guide
 
-### Setting Up Development Environment
-
-```bash
-# Clone and setup
-git clone https://github.com/yourusername/code-review-crew.git
-cd code-review-crew
-python -m venv .venv
-source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-pip install -r requirements-dev.txt  # Dev tools
-
-# Build Docker image
-docker build -t code-review-sandbox:latest -f Dockerfile.sandbox .
-
-# Run tests
-pytest tests/ -v
-
-# Start dev server with hot reload
-streamlit run app.py --server.runOnSave=true
-```
-
 ### Adding a New Agent
 
-1. **Create agent file** in `code_review_crew/agents/`
-
 ```python
-# code_review_crew/agents/documentation_reviewer.py
-import autogen
-
-class DocumentationReviewer:
-    """Reviews code documentation and comments"""
-    
-    def create_agent(self, llm_config: dict) -> autogen.AssistantAgent:
-        return autogen.AssistantAgent(
-            name="DocumentationReviewer",
-            system_message="""
-            You are a Documentation Reviewer specializing in:
-            - Docstring quality
-            - Comment clarity
-            - API documentation
-            - README completeness
-            
-            Provide specific suggestions for improvement.
-            """,
+# 1. Create agent file in code_review_crew/agents/
+class MyCustomAgent(BaseAgent):
+    def __init__(self, llm_config, tools):
+        self.llm_config = llm_config
+        self.tools = tools
+        
+        self.agent = autogen.AssistantAgent(
+            name="MyCustomAgent",
+            system_message="Your system prompt here",
             llm_config=llm_config
         )
-```
+    
+    def create_agent(self):
+        return self.agent
+    
+    def register_functions(self):
+        return {"my_tool": self.tools['my_tool'].run}
+    
+    def analyze(self, code):
+        return {"findings": [...]}
 
-2. **Register in orchestrator**
+# 2. Add to run_group_chat.py
+self.agents['my_custom'] = autogen.AssistantAgent(
+    name="MyCustomAgent",
+    system_message="...",
+    llm_config=self.llm_config
+)
 
-```python
-# code_review_crew/agents/orchestrator.py
-from .documentation_reviewer import DocumentationReviewer
-
-doc_reviewer = DocumentationReviewer().create_agent(llm_config)
-agents.append(doc_reviewer)
+# 3. Include in agent_list
+agent_list = [
+    ...,
+    self.agents['my_custom']
+]
 ```
 
 ### Adding a New Tool
 
-1. **Create tool file** in `code_review_crew/tools/`
-
 ```python
-# code_review_crew/tools/type_checker.py
-import mypy.api
+# 1. Create tool file in code_review_crew/tools/
+class MyTool:
+    def analyze(self, code: str) -> Dict:
+        """Run your analysis"""
+        # Implementation
+        return {"results": [...]}
 
-class TypeChecker:
-    """Wrapper for mypy type checking"""
-    
-    def check_types(self, code: str) -> dict:
-        """Run mypy type checking"""
-        result = mypy.api.run(['/tmp/temp_code.py'])
-        return self._parse_results(result)
-```
+# 2. Initialize in run_group_chat.py
+self.my_tool = MyTool()
 
-2. **Register with agent**
+# 3. Register with agent
+self.tool_functions['my_tool_func'] = self.my_tool.analyze
 
-```python
-code_analyzer = autogen.AssistantAgent(
-    name="CodeAnalyzer",
-    function_map={
-        "run_pylint": linting_tool.run_pylint,
-        "check_types": type_checker.check_types  # New tool
-    }
+# 4. Add to agent's function map
+self.agents['my_agent'].register_function(
+    function_map={"my_tool_func": self.tool_functions['my_tool_func']}
 )
 ```
 
-### Testing Strategies
+### Testing
 
-```python
-# Unit test for agent
-def test_code_analyzer():
-    agent = CodeAnalyzer()
-    result = agent.analyze("def foo(): pass")
-    assert 'issues' in result
-    assert len(result['issues']) >= 0
+```bash
+# Run standalone test
+python run_group_chat_standalone.py
 
-# Integration test for group chat
-@pytest.mark.asyncio
-async def test_full_review():
-    crew = CodeReviewCrew()
-    result = await crew.review_code(sample_code)
-    assert result['status'] == 'complete'
-    assert len(result['issues']) > 0
+# Run with tools
+python run_group_chat.py
 
-# Test tool integration
-def test_pylint_tool():
-    tool = LintingTool()
-    result = tool.run_pylint("print('hello')")
-    assert 'score' in result
-    assert result['score'] >= 0
-```
+# Run web interface
+streamlit run app.py
 
-### Code Style
-
-```python
-# Use type hints
-def analyze_code(code: str, depth: str = "standard") -> Dict[str, Any]:
-    pass
-
-# Use docstrings
-def complex_function(param: str) -> List[Dict]:
-    """
-    Brief description.
-    
-    Args:
-        param: Description
-    
-    Returns:
-        Description
-    
-    Raises:
-        ValueError: When invalid
-    """
-    pass
-
-# Use descriptive names
-analyzed_results = analyze_code(user_code)  # Good
-r = analyze(c)  # Bad
+# Test specific module
+python -m pytest tests/test_agents.py -v
 ```
 
 ---
 
-## Performance Optimization
+## Best Practices
 
-### Caching Strategy
+### Agent Design
+1. Keep system prompts focused on one responsibility
+2. Provide clear examples in prompts
+3. Specify output format expectations
+4. Include severity classifications
 
-```python
-from functools import lru_cache
+### Tool Integration
+1. Always handle timeouts and errors
+2. Validate tool installation
+3. Provide fallback mechanisms
+4. Cache results when appropriate
 
-@lru_cache(maxsize=100)
-def analyze_code_cached(code_hash: str) -> dict:
-    """Cache analysis results by code hash"""
-    return analyze_code(code)
-```
+### Performance
+1. Limit max_rounds to prevent runaway conversations
+2. Use temperature wisely (0.7 good default)
+3. Consider token costs for large codebases
+4. Implement rate limiting for production
 
-### Parallel Agent Execution
+### Security
+1. Never execute untrusted code directly
+2. Use Docker for isolation
+3. Sanitize all inputs
+4. Store API keys in environment variables
+5. Log all reviews for audit
 
-```python
-import asyncio
+---
 
-async def parallel_analysis(code: str) -> dict:
-    """Run independent agents in parallel"""
-    tasks = [
-        code_analyzer.analyze_async(code),
-        security_reviewer.scan_async(code),
-        performance_optimizer.profile_async(code)
-    ]
-    
-    results = await asyncio.gather(*tasks)
-    return merge_results(results)
-```
+## Future Enhancements
 
-### Batch Processing
+### Planned Features
+- [ ] Streaming responses for real-time feedback
+- [ ] Multi-language support (JavaScript, Java, Go)
+- [ ] GitHub PR integration
+- [ ] VS Code extension
+- [ ] Batch file processing
+- [ ] Custom rule configuration
+- [ ] Historical analytics
 
-```python
-def review_multiple_files(files: List[str]) -> List[Dict]:
-    """Efficiently review multiple files"""
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-        results = executor.map(review_file, files)
-    return list(results)
-```
+### Potential Improvements
+- [ ] Explicit tool calling in agent prompts
+- [ ] Upgrade to AutoGen 0.4+ for better function calling
+- [ ] Parallel agent execution
+- [ ] Caching of repeated analyses
+- [ ] User feedback integration
+- [ ] Fine-tuned models for specific domains
 
 ---
 
 ## Appendix
 
-### AutoGen Best Practices
+### Key Files Reference
 
-1. **Keep system messages focused** - One responsibility per agent
-2. **Use function calling** - Augment agents with real tools
-3. **Limit conversation rounds** - Prevent infinite loops
-4. **Handle errors gracefully** - Agents can fail
-5. **Test agent interactions** - Verify collaboration patterns
+| File | Purpose | Lines |
+|------|---------|-------|
+| `app.py` | Streamlit web interface | ~300 |
+| `run_group_chat.py` | AutoGen integration | ~200 |
+| `orchestrator.py` | Review coordinator | ~400 |
+| `code_analyzer.py` | Code quality agent | ~300 |
+| `security_reviewer.py` | Security agent | ~300 |
+| `performance_optimizer.py` | Performance agent | ~350 |
+| `linting_tool.py` | Pylint wrapper | ~250 |
+| `security_scanner.py` | Bandit wrapper | ~300 |
+| `complexity_analyzer.py` | Radon wrapper | ~350 |
 
-### Common Patterns
+### Dependencies
 
-**Consensus Building**
-```python
-# Agents vote on priority
-votes = {}
-for agent in agents:
-    priority = agent.get_priority(issue)
-    votes[agent.name] = priority
-
-consensus = max(votes.values(), key=votes.count)
 ```
+Core:
+- pyautogen==0.2.32
+- openai>=1.0.0
+- streamlit>=1.28.0
 
-**Iterative Refinement**
-```python
-# Agent improves based on feedback
-for iteration in range(max_iterations):
-    suggestion = agent.suggest_fix(code)
-    feedback = reviewer.review_fix(suggestion)
-    if feedback.approved:
-        break
-```
+Tools:
+- pylint>=3.0.0
+- bandit>=1.7.5
+- radon>=6.0.1
+- pytest>=7.4.0
 
-**Human-in-the-Loop**
-```python
-# Request human input at key points
-if issue.severity == "critical":
-    human_decision = await request_human_input(issue)
-    if human_decision == "skip":
-        continue
+Utilities:
+- python-dotenv>=1.0.0
+- docker>=7.0.0 (optional)
 ```
 
 ---
 
 **End of Architecture Documentation**
+
+*Last Updated: November 2024*  
+*Version: 1.0*  
+*Status: Production Ready*

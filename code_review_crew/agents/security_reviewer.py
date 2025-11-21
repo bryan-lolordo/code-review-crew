@@ -1,12 +1,12 @@
 """
 Security Reviewer Agent
 
-Specialized agent for identifying security vulnerabilities and risks.
-Uses Bandit and security best practices to scan code.
+Specialized agent for identifying security vulnerabilities and best practices.
 """
 
 import autogen
-from typing import Dict, List, Optional
+import re
+from typing import Dict, List
 from .base_agent import BaseAgent
 
 
@@ -16,9 +16,9 @@ class SecurityReviewer(BaseAgent):
     - SQL injection vulnerabilities
     - XSS (Cross-Site Scripting)
     - Authentication/authorization flaws
-    - Input validation issues
-    - Sensitive data exposure
-    - OWASP Top 10 vulnerabilities
+    - Input validation
+    - Cryptography issues
+    - OWASP Top 10
     """
     
     def __init__(self, llm_config: Dict, tools: Dict):
@@ -27,38 +27,37 @@ class SecurityReviewer(BaseAgent):
         
         Args:
             llm_config: LLM configuration dictionary
-            tools: Dictionary of tool instances (security_scanner, etc.)
+            tools: Dictionary of tool instances
         """
         self.tools = tools
         self.llm_config = llm_config
         
         system_message = """
-        You are a Security Reviewer specializing in application security.
+        You are a Security Reviewer specializing in identifying security vulnerabilities.
         
         Your responsibilities:
         1. Identify SQL injection vulnerabilities
         2. Detect XSS (Cross-Site Scripting) risks
-        3. Review authentication and authorization mechanisms
-        4. Check input validation and sanitization
-        5. Identify sensitive data exposure
-        6. Scan for OWASP Top 10 vulnerabilities
-        7. Review cryptography usage
-        8. Check for hardcoded credentials
+        3. Check authentication and authorization
+        4. Review input validation
+        5. Identify weak cryptography
+        6. Check for hardcoded secrets
+        7. Review OWASP Top 10 vulnerabilities
         
-        Use the available tools:
+        Use available tools:
         - scan_security: Run Bandit security scanner
-        - check_owasp: Check for OWASP Top 10 vulnerabilities
-        - detect_injection: Detect injection vulnerabilities
+        - detect_sql_injection: Check for SQL injection patterns
+        - detect_secrets: Find hardcoded secrets
         
-        For each security issue found:
-        - Explain the vulnerability clearly
-        - Describe the potential exploit
-        - Assess the security impact (Critical/High/Medium/Low)
-        - Provide secure code alternatives
-        - Reference relevant security standards (OWASP, CWE)
+        Mark ALL security issues as CRITICAL.
+        Explain the exploit and provide secure alternatives.
         
-        Always prioritize security issues as Critical or High severity.
-        Provide concrete examples of how the vulnerability could be exploited.
+        When reporting issues:
+        - Severity: CRITICAL
+        - Line number
+        - Vulnerability type
+        - Exploit example
+        - Secure fix
         """
         
         self.agent = autogen.AssistantAgent(
@@ -74,164 +73,138 @@ class SecurityReviewer(BaseAgent):
     def register_functions(self):
         """Register tool functions with the agent"""
         function_map = {
-            "scan_security": self.tools['security'].run_bandit,
-            "check_owasp": self.tools['security'].check_owasp_top10,
-            "detect_injection": self.detect_injection_vulns,
+            "detect_sql_injection": self.detect_sql_injection,
+            "detect_secrets": self.detect_hardcoded_secrets,
+            "detect_weak_crypto": self.detect_weak_crypto,
         }
         return function_map
     
-    def detect_injection_vulns(self, code: str) -> Dict:
+    def detect_sql_injection(self, code: str) -> List[Dict]:
         """
-        Detect various injection vulnerabilities
+        Detect potential SQL injection vulnerabilities
         
         Args:
             code: Python source code to analyze
         
         Returns:
-            Dictionary of detected injection vulnerabilities
+            List of potential SQL injection issues
         """
-        injections = {
-            'sql_injection': self._check_sql_injection(code),
-            'command_injection': self._check_command_injection(code),
-            'code_injection': self._check_code_injection(code),
-            'xpath_injection': self._check_xpath_injection(code)
-        }
-        
-        return {
-            'total_injections': sum(len(v) for v in injections.values()),
-            'injections': injections
-        }
-    
-    def _check_sql_injection(self, code: str) -> List[Dict]:
-        """Check for SQL injection vulnerabilities"""
-        vulnerabilities = []
-        
-        # Common SQL injection patterns
-        patterns = [
-            'f"SELECT',
-            'f\'SELECT',
-            '" + ',
-            '\' + ',
-            'execute(query',
-            '.format('
-        ]
-        
-        lines = code.split('\n')
-        for line_num, line in enumerate(lines, 1):
-            for pattern in patterns:
-                if pattern in line and 'SELECT' in line.upper():
-                    vulnerabilities.append({
-                        'line': line_num,
-                        'pattern': pattern,
-                        'code': line.strip(),
-                        'severity': 'Critical',
-                        'description': 'Possible SQL injection vulnerability'
-                    })
-        
-        return vulnerabilities
-    
-    def _check_command_injection(self, code: str) -> List[Dict]:
-        """Check for command injection vulnerabilities"""
-        vulnerabilities = []
-        
-        dangerous_functions = [
-            'os.system(',
-            'subprocess.call(',
-            'subprocess.run(',
-            'eval(',
-            'exec('
-        ]
-        
-        lines = code.split('\n')
-        for line_num, line in enumerate(lines, 1):
-            for func in dangerous_functions:
-                if func in line:
-                    vulnerabilities.append({
-                        'line': line_num,
-                        'function': func,
-                        'code': line.strip(),
-                        'severity': 'High',
-                        'description': 'Potential command/code injection'
-                    })
-        
-        return vulnerabilities
-    
-    def _check_code_injection(self, code: str) -> List[Dict]:
-        """Check for code injection via eval/exec"""
-        # Implemented in _check_command_injection
-        return []
-    
-    def _check_xpath_injection(self, code: str) -> List[Dict]:
-        """Check for XPath injection vulnerabilities"""
-        # TODO: Implement XPath injection detection
-        return []
-    
-    def check_crypto_usage(self, code: str) -> Dict:
-        """
-        Check for weak or insecure cryptography usage
-        
-        Args:
-            code: Python source code to analyze
-        
-        Returns:
-            Dictionary of cryptography issues
-        """
-        issues = {
-            'weak_hash': self._check_weak_hashing(code),
-            'weak_random': self._check_weak_random(code),
-            'hardcoded_secrets': self._check_hardcoded_secrets(code)
-        }
-        
-        return issues
-    
-    def _check_weak_hashing(self, code: str) -> List[Dict]:
-        """Check for weak hashing algorithms"""
-        weak_algorithms = ['md5', 'sha1']
         issues = []
-        
         lines = code.split('\n')
-        for line_num, line in enumerate(lines, 1):
-            for algo in weak_algorithms:
-                if algo in line.lower():
+        
+        # Patterns that suggest SQL injection risk
+        dangerous_patterns = [
+            (r'f["\'].*SELECT.*\{.*\}.*["\']', 'f-string in SQL query'),
+            (r'["\'].*SELECT.*["\'].*\+.*', 'String concatenation in SQL'),
+            (r'["\'].*SELECT.*%.*["\'].*%', '% formatting in SQL'),
+            (r'\.format\(.*\).*SELECT', '.format() in SQL query'),
+        ]
+        
+        for i, line in enumerate(lines, 1):
+            for pattern, description in dangerous_patterns:
+                if re.search(pattern, line, re.IGNORECASE):
                     issues.append({
-                        'line': line_num,
-                        'algorithm': algo,
-                        'severity': 'High',
-                        'description': f'{algo.upper()} is cryptographically broken'
+                        'line': i,
+                        'type': 'SQL Injection',
+                        'severity': 'CRITICAL',
+                        'description': f'{description} - Use parameterized queries',
+                        'code': line.strip()
                     })
         
         return issues
     
-    def _check_weak_random(self, code: str) -> List[Dict]:
-        """Check for weak random number generation"""
-        if 'import random' in code and ('token' in code.lower() or 'password' in code.lower()):
-            return [{
-                'severity': 'High',
-                'description': 'Using random module for security-sensitive operations',
-                'recommendation': 'Use secrets module instead'
-            }]
-        return []
+    def detect_hardcoded_secrets(self, code: str) -> List[Dict]:
+        """
+        Detect hardcoded secrets like API keys, passwords
+        
+        Args:
+            code: Python source code to analyze
+        
+        Returns:
+            List of potential hardcoded secrets
+        """
+        issues = []
+        lines = code.split('\n')
+        
+        # Patterns for common secrets
+        secret_patterns = [
+            (r'(api[_-]?key|apikey)\s*=\s*["\'][^"\']+["\']', 'API Key'),
+            (r'(password|passwd|pwd)\s*=\s*["\'][^"\']+["\']', 'Password'),
+            (r'(secret|token)\s*=\s*["\'][^"\']+["\']', 'Secret/Token'),
+            (r'(sk-[a-zA-Z0-9]{32,})', 'API Key (OpenAI style)'),
+        ]
+        
+        for i, line in enumerate(lines, 1):
+            # Skip comments
+            if line.strip().startswith('#'):
+                continue
+                
+            for pattern, secret_type in secret_patterns:
+                if re.search(pattern, line, re.IGNORECASE):
+                    issues.append({
+                        'line': i,
+                        'type': 'Hardcoded Secret',
+                        'severity': 'CRITICAL',
+                        'description': f'{secret_type} hardcoded - Use environment variables',
+                        'code': line.strip()
+                    })
+        
+        return issues
     
-    def _check_hardcoded_secrets(self, code: str) -> List[Dict]:
-        """Check for hardcoded passwords, API keys, etc."""
-        # TODO: Implement hardcoded secrets detection
-        return []
+    def detect_weak_crypto(self, code: str) -> List[Dict]:
+        """
+        Detect weak cryptographic functions
+        
+        Args:
+            code: Python source code to analyze
+        
+        Returns:
+            List of weak crypto usage
+        """
+        issues = []
+        lines = code.split('\n')
+        
+        # Weak crypto patterns
+        weak_patterns = [
+            (r'hashlib\.md5', 'MD5 is cryptographically broken - Use SHA256 or bcrypt'),
+            (r'hashlib\.sha1', 'SHA1 is weak - Use SHA256 or better'),
+            (r'\.encode\(\)\.hex\(\)', 'Simple encoding is not encryption'),
+        ]
+        
+        for i, line in enumerate(lines, 1):
+            for pattern, description in weak_patterns:
+                if re.search(pattern, line):
+                    issues.append({
+                        'line': i,
+                        'type': 'Weak Cryptography',
+                        'severity': 'HIGH',
+                        'description': description,
+                        'code': line.strip()
+                    })
+        
+        return issues
     
     def analyze(self, code: str) -> Dict:
         """
-        High-level security analysis function
+        Comprehensive security analysis
         
         Args:
             code: Python source code to analyze
         
         Returns:
-            Comprehensive security analysis results
+            Security analysis results
         """
         results = {
-            'bandit_results': self.tools['security'].run_bandit(code),
-            'owasp_check': self.tools['security'].check_owasp_top10(code),
-            'injection_vulns': self.detect_injection_vulns(code),
-            'crypto_issues': self.check_crypto_usage(code)
+            'sql_injection': self.detect_sql_injection(code),
+            'hardcoded_secrets': self.detect_hardcoded_secrets(code),
+            'weak_crypto': self.detect_weak_crypto(code),
+            'total_issues': 0
         }
+        
+        results['total_issues'] = (
+            len(results['sql_injection']) +
+            len(results['hardcoded_secrets']) +
+            len(results['weak_crypto'])
+        )
         
         return results

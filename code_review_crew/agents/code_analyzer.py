@@ -6,6 +6,7 @@ Uses Pylint and other linting tools to provide comprehensive code analysis.
 """
 
 import autogen
+import re
 from typing import Dict, List, Optional
 from .base_agent import BaseAgent
 
@@ -43,21 +44,23 @@ class CodeAnalyzer(BaseAgent):
         5. Assess SOLID principles adherence
         6. Review error handling practices
         
-        Use the available tools:
+        Available tools (use if needed):
         - run_pylint: Run Pylint static analysis
         - check_pep8: Check PEP 8 compliance
         - detect_code_smells: Identify common code smells
         
-        Provide specific line numbers and actionable suggestions.
-        Distinguish between style issues and functional bugs.
-        Prioritize issues by severity: Critical > High > Medium > Low.
+        When reporting issues, use this format for EACH issue:
+        - Issue type: (style/bug/smell)
+        - Line number: (specific line or range)
+        - Description: (what's wrong)
+        - Suggested fix: (how to fix it)
+        - Severity: (Critical/High/Medium/Low)
         
-        When reporting issues, structure your response as:
-        - Issue type (style/bug/smell)
-        - Line number
-        - Description
-        - Suggested fix
-        - Severity
+        IMPORTANT:
+        - Provide your complete analysis
+        - Do NOT tell the orchestrator what to do next
+        - Do NOT call other agents
+        - Focus only on code quality issues
         """
         
         self.agent = autogen.AssistantAgent(
@@ -90,11 +93,8 @@ class CodeAnalyzer(BaseAgent):
             Dictionary containing detected code smells
         """
         smells = {
-            'god_object': self._check_god_object(code),
             'long_method': self._check_long_methods(code),
             'magic_numbers': self._check_magic_numbers(code),
-            'dead_code': self._check_dead_code(code),
-            'duplicate_code': self._check_duplicates(code)
         }
         
         return {
@@ -102,30 +102,55 @@ class CodeAnalyzer(BaseAgent):
             'smells': smells
         }
     
-    def _check_god_object(self, code: str) -> List[Dict]:
-        """Check for God Object anti-pattern (classes with too many responsibilities)"""
-        # TODO: Implement detection logic
-        return []
-    
     def _check_long_methods(self, code: str) -> List[Dict]:
-        """Check for methods/functions that are too long"""
-        # TODO: Implement detection logic
-        return []
+        """Check for methods/functions that are too long (>50 lines)"""
+        issues = []
+        lines = code.split('\n')
+        current_function = None
+        function_start = 0
+        
+        for i, line in enumerate(lines, 1):
+            # Simple check for function definitions
+            if line.strip().startswith('def '):
+                if current_function:
+                    # Check previous function length
+                    length = i - function_start
+                    if length > 50:
+                        issues.append({
+                            'function': current_function,
+                            'line': function_start,
+                            'length': length,
+                            'description': f'Function is {length} lines long (max recommended: 50)'
+                        })
+                current_function = line.strip().split('(')[0].replace('def ', '')
+                function_start = i
+        
+        return issues
     
     def _check_magic_numbers(self, code: str) -> List[Dict]:
-        """Check for magic numbers (hardcoded values)"""
-        # TODO: Implement detection logic
-        return []
-    
-    def _check_dead_code(self, code: str) -> List[Dict]:
-        """Check for unreachable or unused code"""
-        # TODO: Implement detection logic
-        return []
-    
-    def _check_duplicates(self, code: str) -> List[Dict]:
-        """Check for duplicate code blocks"""
-        # TODO: Implement detection logic
-        return []
+        """Check for magic numbers (hardcoded numeric values that should be constants)"""
+        issues = []
+        lines = code.split('\n')
+        
+        # Look for standalone numbers (excluding 0, 1, -1 which are common)
+        number_pattern = r'\b([2-9]\d*|[1-9]\d+)\b'
+        
+        for i, line in enumerate(lines, 1):
+            # Skip comments and strings
+            if '#' in line:
+                line = line.split('#')[0]
+            if line.strip().startswith(('"""', "'''", '"', "'")):
+                continue
+            
+            matches = re.finditer(number_pattern, line)
+            for match in matches:
+                issues.append({
+                    'line': i,
+                    'value': match.group(),
+                    'description': f'Magic number {match.group()} should be a named constant'
+                })
+        
+        return issues[:5]  # Limit to first 5 to avoid noise
     
     def analyze(self, code: str) -> Dict:
         """

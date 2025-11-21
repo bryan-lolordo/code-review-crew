@@ -6,7 +6,10 @@ Multi-agent code review system using AutoGen
 
 import streamlit as st
 import os
+import warnings
+warnings.filterwarnings('ignore', message='flaml.automl is not available')
 from dotenv import load_dotenv
+from run_group_chat import CodeReviewChat
 
 # Load environment variables
 load_dotenv()
@@ -59,6 +62,8 @@ if 'current_code' not in st.session_state:
     st.session_state.current_code = ""
 if 'review_running' not in st.session_state:
     st.session_state.review_running = False
+if 'current_results' not in st.session_state:
+    st.session_state.current_results = None
 
 # Header
 st.markdown('<div class="main-header">🔍 Code Review Crew</div>', unsafe_allow_html=True)
@@ -86,13 +91,13 @@ with st.sidebar:
     enable_code_analyzer = st.checkbox("Code Analyzer", value=True)
     enable_security = st.checkbox("Security Reviewer", value=True)
     enable_performance = st.checkbox("Performance Optimizer", value=True)
-    enable_test_gen = st.checkbox("Test Generator", value=True)
+    enable_test_gen = st.checkbox("Test Generator", value=False)
     enable_executor = st.checkbox("Code Executor", value=False, 
                                    help="Run code in Docker sandbox (requires Docker)")
     
     # Advanced settings
     with st.expander("Advanced Settings"):
-        max_rounds = st.slider("Max Conversation Rounds", 5, 30, 20)
+        max_rounds = st.slider("Max Conversation Rounds", 5, 30, 10)
         timeout = st.slider("Review Timeout (seconds)", 60, 600, 300)
         temperature = st.slider("AI Temperature", 0.0, 1.0, 0.7, 0.1)
     
@@ -142,14 +147,62 @@ with tab1:
         example_choice = st.selectbox(
             "Choose an example:",
             [
-                "Simple Function",
-                "Security Issues",
+                "SQL Injection",
                 "Performance Issues",
-                "Complex Class"
+                "Security Issues",
+                "All Issues"
             ]
         )
-        # Placeholder - would load from examples/ directory
-        code_input = "# Example code would be loaded here\npass"
+        
+        # Example code samples
+        examples = {
+            "SQL Injection": """
+def get_user(username):
+    query = f"SELECT * FROM users WHERE name = '{username}'"
+    return db.execute(query)
+""",
+            "Performance Issues": """
+def process_data(items):
+    result = []
+    for i in items:
+        for j in items:
+            if i['id'] == j['parent']:
+                result.append(i)
+    return result
+""",
+            "Security Issues": """
+def hash_password(password):
+    import hashlib
+    return hashlib.md5(password.encode()).hexdigest()
+
+API_KEY = "sk-1234567890abcdef"
+""",
+            "All Issues": """
+def get_user(username):
+    # SQL injection vulnerability
+    query = f"SELECT * FROM users WHERE name = '{username}'"
+    return db.execute(query)
+
+def process_data(items):
+    # O(n²) nested loop
+    result = []
+    for i in items:
+        for j in items:
+            if i['id'] == j['parent']:
+                result.append(i)
+    return result
+
+def hash_password(password):
+    # Weak crypto
+    import hashlib
+    return hashlib.md5(password.encode()).hexdigest()
+
+# Hardcoded secret
+API_KEY = "sk-1234567890abcdef"
+"""
+        }
+        
+        code_input = examples[example_choice]
         st.code(code_input, language='python')
     
     # Review button
@@ -164,81 +217,96 @@ with tab1:
                 st.session_state.current_code = code_input
                 st.session_state.review_running = True
                 
-                # Placeholder for actual review logic
+                # Run the AutoGen code review
                 with st.spinner("🤖 Agents are analyzing your code..."):
-                    st.info("Review system will be implemented here")
-                    # TODO: Initialize AutoGen agents and run review
-                    # review_results = run_review(code_input, config)
+                    try:
+                        # Initialize the review system
+                        chat = CodeReviewChat()
+                        
+                        # Run the review
+                        results = chat.review_code(code_input)
+                        
+                        # Store results in session state
+                        st.session_state.review_history.append(results)
+                        st.session_state.current_results = results
+                        
+                        st.success("✅ Review complete! Check the Results and Agent Chat tabs.")
+                        
+                    except Exception as e:
+                        st.error(f"Error during review: {str(e)}")
+                        st.exception(e)
+                        st.session_state.current_results = None
                 
                 st.session_state.review_running = False
 
 with tab2:
     st.header("📊 Review Results")
     
-    if not st.session_state.review_history:
+    if st.session_state.current_results is None:
         st.info("No reviews yet. Submit code in the 'Review Code' tab to get started.")
     else:
-        # Placeholder for results display
-        st.subheader("Latest Review Summary")
+        results = st.session_state.current_results
         
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("Overall Score", "B+", "85/100")
-        with col2:
-            st.metric("Critical Issues", "2", "🔴")
-        with col3:
-            st.metric("Warnings", "5", "🟡")
-        with col4:
-            st.metric("Suggestions", "8", "💡")
+        st.subheader("✅ Review Complete")
         
-        # Issues list
-        st.subheader("🔴 Critical Issues")
-        with st.expander("SQL Injection Vulnerability (Line 45)", expanded=True):
-            st.markdown("""
-            **Severity:** Critical  
-            **Agent:** Security Reviewer  
-            **Description:** User input directly concatenated into SQL query
+        # Show total messages
+        st.metric("Total Agent Messages", len(results['conversation']))
+        
+        st.divider()
+        
+        # Display the conversation in expandable sections
+        st.subheader("Agent Analysis")
+        
+        for i, msg in enumerate(results['conversation']):
+            speaker = msg['speaker']
+            content = msg['content']
             
-            ```python
-            # ❌ Current (Vulnerable)
-            query = f"SELECT * FROM users WHERE username = '{username}'"
+            # Skip the initial user message
+            if speaker == "User":
+                continue
             
-            # ✅ Suggested Fix
-            query = "SELECT * FROM users WHERE username = ?"
-            cursor.execute(query, (username,))
-            ```
+            # Use different icons for different agents
+            icon = {
+                "ReviewOrchestrator": "🎯",
+                "CodeAnalyzer": "🔍",
+                "SecurityReviewer": "🛡️",
+                "PerformanceOptimizer": "⚡"
+            }.get(speaker, "🤖")
             
-            **Impact:** Attackers could execute arbitrary SQL commands  
-            **Fix Effort:** Low (5 minutes)
-            """)
-        
-        st.subheader("🟡 Warnings")
-        st.info("High complexity function detected on line 112")
-        
-        st.subheader("💡 Suggestions")
-        st.success("Consider using list comprehension on line 67")
+            with st.expander(f"{icon} {speaker}", expanded=(i <= 2)):
+                st.markdown(content)
 
 with tab3:
     st.header("💬 Agent Conversation")
     
-    if not st.session_state.review_running and not st.session_state.review_history:
+    if st.session_state.current_results is None:
         st.info("Agent conversations will appear here during review")
     else:
-        # Placeholder for agent chat display
-        st.markdown('<div class="agent-chat">', unsafe_allow_html=True)
-        st.markdown("**[Review Orchestrator]** 🎯")
-        st.write("Let's begin the code review. Code Analyzer, please start with your analysis.")
-        st.markdown('</div>', unsafe_allow_html=True)
+        results = st.session_state.current_results
         
-        st.markdown('<div class="agent-chat">', unsafe_allow_html=True)
-        st.markdown("**[Code Analyzer]** 🔍")
-        st.write("I've identified 3 style issues and 1 potential bug. Running Pylint analysis...")
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.write(f"**Total messages exchanged:** {len(results['conversation'])}")
         
-        st.markdown('<div class="agent-chat">', unsafe_allow_html=True)
-        st.markdown("**[Security Reviewer]** 🛡️")
-        st.write("Critical security issue detected: SQL injection vulnerability on line 45.")
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.divider()
+        
+        for msg in results['conversation']:
+            speaker = msg['speaker']
+            content = msg['content']
+            
+            # Color code by agent
+            if speaker == "ReviewOrchestrator":
+                st.markdown(f'<div class="agent-chat" style="border-left: 4px solid #667eea;">', unsafe_allow_html=True)
+            elif speaker == "CodeAnalyzer":
+                st.markdown(f'<div class="agent-chat" style="border-left: 4px solid #4299e1;">', unsafe_allow_html=True)
+            elif speaker == "SecurityReviewer":
+                st.markdown(f'<div class="agent-chat" style="border-left: 4px solid #f56565;">', unsafe_allow_html=True)
+            elif speaker == "PerformanceOptimizer":
+                st.markdown(f'<div class="agent-chat" style="border-left: 4px solid #48bb78;">', unsafe_allow_html=True)
+            else:
+                st.markdown('<div class="agent-chat">', unsafe_allow_html=True)
+            
+            st.markdown(f"**[{speaker}]**")
+            st.write(content)
+            st.markdown('</div>', unsafe_allow_html=True)
 
 with tab4:
     st.header("📚 Code Examples")
@@ -246,26 +314,49 @@ with tab4:
     st.markdown("""
     Try these example code snippets to see the review system in action:
     
-    ### 1. Simple Function
-    Basic function with style issues
+    ### 1. SQL Injection
+    Example with SQL injection vulnerability
+    ```python
+    def get_user(username):
+        query = f"SELECT * FROM users WHERE name = '{username}'"
+        return db.execute(query)
+    ```
     
-    ### 2. Security Issues
-    Code with common security vulnerabilities:
-    - SQL injection
-    - Weak password hashing
-    - Unvalidated input
+    ### 2. Performance Issues
+    Code with O(n²) nested loops
+    ```python
+    def process_data(items):
+        result = []
+        for i in items:
+            for j in items:
+                if i['id'] == j['parent']:
+                    result.append(i)
+        return result
+    ```
     
-    ### 3. Performance Issues
-    Code with performance problems:
-    - Nested loops (O(n²))
-    - Inefficient algorithms
-    - Memory leaks
+    ### 3. Security Issues
+    Weak cryptography and hardcoded secrets
+    ```python
+    import hashlib
     
-    ### 4. Complex Class
-    Large class demonstrating:
-    - High cyclomatic complexity
-    - Code smells
-    - Missing documentation
+    def hash_password(password):
+        return hashlib.md5(password.encode()).hexdigest()
+    
+    API_KEY = "sk-1234567890abcdef"
+    ```
+    
+    ### 4. All Issues Combined
+    Select "All Issues" from the Load Example dropdown to see multiple problems
+    
+    ---
+    
+    ## What the Agents Will Find:
+    
+    - **CodeAnalyzer**: Style issues, code smells, missing docstrings
+    - **SecurityReviewer**: SQL injection, weak crypto, hardcoded secrets
+    - **PerformanceOptimizer**: O(n²) complexity, inefficient algorithms
+    
+    Click "Load Example" above and select an example to try it!
     """)
 
 # Footer
@@ -273,6 +364,6 @@ st.divider()
 st.markdown("""
 <div style='text-align: center; color: #666; padding: 20px;'>
     Built with ❤️ using AutoGen and Streamlit<br>
-    <a href='https://github.com/yourusername/code-review-crew'>View on GitHub</a>
+    <a href='https://github.com/bryan-lolordo/code-review-crew'>View on GitHub</a>
 </div>
 """, unsafe_allow_html=True)
