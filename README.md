@@ -36,27 +36,24 @@ An intelligent code review system that combines AutoGen's multi-agent collaborat
 
 ---
 
-## 🎬 Screenshots
+## 🚀 Demo Flow
 
-### Main Interface
-![Main Interface](screenshots/main-interface.png)
-*Submit code for review with configurable iterations and analysis modes*
+Below are screenshots showing the review and auto-fix process:
 
-### Code Comparison - Before & After
-![Code Comparison](screenshots/code-comparison.png)
-*Side-by-side view of original code vs. automatically fixed code*
+1. **Submit Code Sample**
+   ![Submit Code Sample](assets/1.png)
 
-### Process Logs - Agent Reasoning
-![Process Logs](screenshots/process-logs.png)
-*Detailed step-by-step execution showing AutoGen review → Issue extraction → LangGraph fixing*
+2. **AutoGen Multi-Agent Collaboration**
+   ![AutoGen Multi-Agent Collaboration](assets/2.png)
 
-### Iteration-by-Iteration Fixing
-![Iteration Logs](screenshots/iteration-logs.png)
-*See each fix attempt: pattern match vs. LLM fallback, test results, and code changes*
+3. **Detailed Code Review Report**
+   ![Detailed Code Review Report](assets/3.png)
 
-### Agent Conversation View
-![Agent Chat](screenshots/agent-conversation.png)
-*Full conversation between specialized agents during code review*
+4. **LangGraph Iterative Fixing**
+   ![LangGraph Iterative Fixing](assets/4.png)
+
+5. **Before/After Transformation**
+   ![Before/After Transformation](assets/5.png)
 
 ---
 
