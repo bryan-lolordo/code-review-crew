@@ -40,19 +40,14 @@ An intelligent code review system that combines AutoGen's multi-agent collaborat
 
 Below are screenshots showing the review and auto-fix process:
 
-1. **Submit Code Sample**
    ![Submit Code Sample](assets/1.png)
 
-2. **AutoGen Multi-Agent Collaboration**
    ![AutoGen Multi-Agent Collaboration](assets/2.png)
 
-3. **Detailed Code Review Report**
    ![Detailed Code Review Report](assets/3.png)
 
-4. **LangGraph Iterative Fixing**
    ![LangGraph Iterative Fixing](assets/4.png)
 
-5. **Before/After Transformation**
    ![Before/After Transformation](assets/5.png)
 
 ---
