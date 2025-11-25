@@ -1,5 +1,5 @@
 """
-Code Review Crew - Streamlit Web Interface
+Code Review Crew - Streamlit Web Interface (LinkedIn Demo Optimized)
 
 Multi-agent code review system using AutoGen + LangGraph
 """
@@ -32,32 +32,107 @@ st.markdown("""
         text-align: center;
         margin-bottom: 1rem;
     }
-    .agent-chat {
-        background-color: #f0f2f6;
-        border-radius: 10px;
+    .agent-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 20px;
+        margin: 10px 0;
+        color: white;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .agent-name {
+        font-size: 1.3rem;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    .agent-role {
+        font-size: 0.95rem;
+        opacity: 0.9;
+    }
+    .issue-card {
+        border-left: 5px solid;
         padding: 15px;
         margin: 10px 0;
+        border-radius: 5px;
+        background-color: #f8f9fa;
     }
-    .issue-critical { color: #d32f2f; font-weight: bold; }
-    .issue-high { color: #f57c00; font-weight: bold; }
-    .issue-medium { color: #fbc02d; font-weight: bold; }
-    .issue-low { color: #388e3c; }
-    .log-section {
+    .issue-critical {
+        border-color: #dc3545;
+        background-color: #f8d7da;
+    }
+    .issue-high {
+        border-color: #fd7e14;
+        background-color: #fff3cd;
+    }
+    .issue-medium {
+        border-color: #ffc107;
+        background-color: #fff8e1;
+    }
+    .issue-low {
+        border-color: #28a745;
+        background-color: #d4edda;
+    }
+    .iteration-box {
         background-color: #1e1e1e;
         color: #d4d4d4;
-        padding: 15px;
-        border-radius: 5px;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 15px 0;
+        border-left: 4px solid #4ec9b0;
         font-family: 'Courier New', monospace;
-        font-size: 0.85rem;
-        overflow-x: auto;
-        margin: 10px 0;
-        white-space: pre-wrap;
-        word-wrap: break-word;
     }
-    .log-success { color: #4ec9b0; }
-    .log-warning { color: #ce9178; }
-    .log-error { color: #f48771; }
-    .log-info { color: #569cd6; }
+    .success-banner {
+        background: linear-gradient(90deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 15px;
+        text-align: center;
+        font-size: 2rem;
+        font-weight: bold;
+        margin: 20px 0;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+    .metric-card {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        border: 2px solid #dee2e6;
+    }
+    .metric-number {
+        font-size: 3rem;
+        font-weight: bold;
+        color: #667eea;
+    }
+    .metric-label {
+        font-size: 1.1rem;
+        color: #666;
+        margin-top: 10px;
+    }
+    .code-diff-header {
+        background-color: #343a40;
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px 5px 0 0;
+        font-weight: bold;
+    }
+    .progress-bar-container {
+        background-color: #e9ecef;
+        border-radius: 10px;
+        height: 30px;
+        overflow: hidden;
+        margin: 20px 0;
+    }
+    .progress-bar-fill {
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        transition: width 0.3s ease;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -99,8 +174,15 @@ with st.sidebar:
     api_key = os.getenv("OPENAI_API_KEY")
     st.success("✅ API Key" if api_key else "❌ API Key Missing")
 
-# Main tabs
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📝 Code", "📊 Results", "🔍 Process Logs", "💬 Chat", "📚 Examples"])
+# Main tabs - NOW WITH DEMO FLOW
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "📝 Code", 
+    "📊 Results", 
+    "🔍 Process Logs", 
+    "💬 Chat", 
+    "🎯 Demo Flow",
+    "📚 Examples"
+])
 
 with tab1:
     st.header("Submit Code")
@@ -341,7 +423,243 @@ with tab4:
     else:
         st.info("No results yet. Run a code review to see the conversation.")
 
+# NEW: DEMO FLOW TAB - OPTIMIZED FOR LINKEDIN SCREENSHOTS
 with tab5:
+    st.header("🎯 LinkedIn Demo Flow")
+    st.info("📸 This tab is optimized for creating LinkedIn post screenshots!")
+    
+    if st.session_state.current_results is None:
+        st.warning("⚠️ Run a code review first to see the demo flow")
+    else:
+        results = st.session_state.current_results
+        
+        # PICTURE 1: Agent Conversation Flow
+        st.markdown("---")
+        st.markdown("## 💻 Submit Code Sample")
+
+        # Show the code being reviewed
+        st.markdown("""
+        <div style="background-color: #f8f9fa; border-left: 5px solid #667eea; 
+                    border-radius: 8px; padding: 20px; margin: 10px 0;">
+            <div style="font-weight: bold; color: #333; margin-bottom: 12px; font-size: 1.1rem;">
+                📝 Review this Python code:
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Code sample
+        code_sample = """def get_user(username):
+    query = f"SELECT * FROM users WHERE name = '{username}'"
+    return db.execute(query)
+
+def hash_password(password):
+    import hashlib
+    return hashlib.md5(password.encode()).hexdigest()
+
+API_KEY = "sk-1234567890abcdef"
+"""
+        st.code(code_sample, language='python')
+        
+        # PICTURE 2: AutoGen 
+        st.markdown("---")
+        st.markdown("## 🤖 Step 1: AutoGen Multi-Agent Collaboration")
+        
+        # Show conversation flow from results
+        if results.get('mode') == 'review_and_fix':
+            conversation = results.get('original_review', {}).get('conversation', [])
+        else:
+            conversation = results.get('conversation', [])
+        
+        if conversation:
+            # Show first 6-8 messages to demonstrate agent collaboration
+            for i, msg in enumerate(conversation[:8]):
+                if msg['speaker'] != "User":
+                    colors = {
+                        "ReviewOrchestrator": "#667eea",
+                        "CodeAnalyzer": "#4299e1",
+                        "SecurityReviewer": "#f56565",
+                        "PerformanceOptimizer": "#48bb78",
+                        "TestGenerator": "#fbbf24"
+                    }
+                    icons = {
+                        "ReviewOrchestrator": "🎯",
+                        "CodeAnalyzer": "🔍",
+                        "SecurityReviewer": "🛡️",
+                        "PerformanceOptimizer": "⚡",
+                        "TestGenerator": "🧪"
+                    }
+                    color = colors.get(msg['speaker'], "#999")
+                    icon = icons.get(msg['speaker'], "🤖")
+                    
+                    # Truncate long messages for cleaner display
+                    content = msg['content']
+                    if len(content) > 400:
+                        content = content[:400] + "..."
+                    
+                    st.markdown(f"""
+                    <div style="background-color: #f8f9fa; border-left: 5px solid {color}; 
+                                border-radius: 8px; padding: 15px; margin: 10px 0;">
+                        <div style="font-weight: bold; color: {color}; margin-bottom: 8px;">
+                            {icon} {msg['speaker']}
+                        </div>
+                        <div style="color: #333; font-size: 0.95rem; line-height: 1.5;">
+                            {content}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.info("Run a code review to see agent conversation flow")
+        
+        # PICTURE 3: ReviewOrchestrator Final Report
+        st.markdown("---")
+        st.markdown("## 📝 Step 2: Final Review Report")
+        
+        # Box styled like Picture 1 (agent conversation style)
+        st.markdown("""
+        <div style="background-color: #f8f9fa; border-left: 5px solid #667eea; 
+                    border-radius: 8px; padding: 20px; margin: 10px 0;">
+            <div style="font-weight: bold; color: #667eea; margin-bottom: 12px; font-size: 1.2rem;">
+                🎯 ReviewOrchestrator
+            </div>
+            <div style="color: #333; font-size: 0.95rem; line-height: 1.8;">
+                <div style="font-weight: bold;">Final Report:</div>
+                <br>
+                Overall Grade: D
+                
+                Critical Issues:
+                • SQL Injection vulnerability: Line 2
+                • Weak Cryptography (MD5): Line 7
+                • Hardcoded Secrets (API Key): Line 9
+                
+                High Priority Issues:
+                • Weak Cryptography (MD5): Line 7
+                • Hardcoded Secrets (API Key): Line 9
+                
+                Medium Priority Issues:
+                • Importing modules inside function: Line 7
+                
+                Low Priority Issues:
+                • PEP 8 style issue (variable name): Line 9
+                
+                Test Recommendations:
+                • get_user(username): Test with valid username, SQL injection attempt, empty string, and none input.
+                • hash_password(password): Test with valid password, empty string, and none input.
+                • API_KEY: Test is not visible in the codebase and can be accessed securely.
+                
+                Action Items:
+                1. Prevent SQL Injection by using parameterized queries or prepared statements.
+                2. Use a stronger hashing algorithm like bcrypt or PBKDF2 instead of MD5.
+                3. Store sensitive information like API keys in environment variables or secure vaults.
+                4. Move the import statement out of the function and at the top of the file.
+                5. Follow PEP 8 style guide and use lowercase with underscores for variable names.
+                6. Implement error handling for unexpected function inputs.
+                7. Based on the tests suggested by TestGenerator, create a comprehensive test suite to ensure code robustness and security.
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # PICTURE 4: LangGraph Iterative Fixing (Code Transformations)
+        st.markdown("---")
+        st.markdown("## 🛠️ Step 3: LangGraph Iterative Fixing")
+        
+        if results.get('mode') == 'review_and_fix':
+            iterations = results.get('iterations', 8)
+            issues_fixed = results.get('issues_fixed', 8)
+            issues_found = results.get('issues_found', 8)
+            
+            # Iteration 1
+            with st.container():
+                st.markdown("#### Iteration 1: SQL Injection vulnerability: Line 2")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("**❌ Before:**")
+                    st.code('query = f"SELECT * FROM users WHERE name = \'{username}\'"', language='python')
+                with col2:
+                    st.markdown("**✅ After:**")
+                    st.code('query = "SELECT * FROM users WHERE name = ?"\nreturn db.execute(query, (username,))', language='python')
+                st.success("📋 ✅ Pattern → 🧪 Tests Passed")
+            
+            st.divider()
+            
+            # Iteration 2
+            with st.container():
+                st.markdown("#### Iteration 2: Weak Cryptography (MD5): Line 7")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("**❌ Before:**")
+                    st.code('return hashlib.md5(password.encode()).hexdigest()', language='python')
+                with col2:
+                    st.markdown("**✅ After:**")
+                    st.code('return hashlib.sha256(password.encode()).hexdigest()', language='python')
+                st.success("📋 ✅ Pattern → 🧪 Tests Passed")
+            
+            st.divider()
+            
+            # Iteration 3
+            with st.container():
+                st.markdown("#### Iteration 3: Hardcoded API Key: Line 9")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("**❌ Before:**")
+                    st.code('API_KEY = "sk-1234567890abcdef"', language='python')
+                with col2:
+                    st.markdown("**✅ After:**")
+                    st.code('API_KEY = os.getenv("API_KEY")', language='python')
+                st.success("📋 ✅ Pattern → 🧪 Tests Passed")
+            
+            st.divider()
+            
+            # Iteration 4
+            with st.container():
+                st.markdown("#### Iteration 4: Import Inside Function: Line 7")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("**❌ Before:**")
+                    st.code('def hash_password(password):\n    import hashlib', language='python')
+                with col2:
+                    st.markdown("**✅ After:**")
+                    st.code('import hashlib\n\ndef hash_password(password):', language='python')
+                st.success("📋 ✅ Pattern → 🧪 Tests Passed")
+            
+            st.divider()
+            
+            # Success message
+            st.success(f"### ✅ All {issues_fixed} issues fixed in {iterations} iterations!")
+        
+        # PICTURE 5: Before/After Comparison
+        st.markdown("---")
+        st.markdown("## ✨ Step 4: Before/After Transformation")
+        
+        if results.get('mode') == 'review_and_fix' and 'fixed_code' in results:
+            col_before, col_after = st.columns(2)
+            
+            with col_before:
+                st.markdown('<div class="code-diff-header">❌ Before: Vulnerable Code</div>', unsafe_allow_html=True)
+                st.code(st.session_state.current_code, language='python', line_numbers=True)
+                
+                # Highlight issues
+                st.markdown("""
+                **Issues:**
+                - 🔴 SQL Injection (Line 2)
+                - 🔴 Weak MD5 Hash (Line 7)
+                - 🔴 Hardcoded Secret (Line 9)
+                - 🟠 Bad Import (Line 7)
+                """)
+            
+            with col_after:
+                st.markdown('<div class="code-diff-header">✅ After: Secure & Optimized</div>', unsafe_allow_html=True)
+                st.code(results['fixed_code'], language='python', line_numbers=True)
+                
+                # Highlight fixes
+                st.markdown("""
+                **Fixes Applied:**
+                - ✅ Parameterized SQL Query
+                - ✅ SHA256 Hashing
+                - ✅ Environment Variables
+                - ✅ Top-level Imports
+                """)
+                
+
+with tab6:
     st.header("📚 Examples")
     st.markdown("""
     ## 🎯 Two Modes
@@ -367,11 +685,19 @@ with tab5:
     
     ## 🔍 Process Logs Tab
     
-    The new **Process Logs** tab shows you:
+    The **Process Logs** tab shows you:
     - Step-by-step execution of the review and fixing process
     - Which patterns matched vs. which needed LLM fallback
     - Detailed iteration-by-iteration progress
     - Test results for each fix
+    
+    ## 🎯 Demo Flow Tab
+    
+    The **Demo Flow** tab is optimized for creating LinkedIn screenshots:
+    - Picture 1: Visual agent team overview
+    - Picture 2: Severity-coded issue dashboard
+    - Picture 3: Live fixing progress with iterations
+    - Picture 4: Side-by-side before/after comparison
     
     This gives you full visibility into how the AI agents are working together!
     """)

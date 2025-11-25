@@ -10,6 +10,9 @@ dist/
 .eggs/
 *.egg-info/
 
+# Cache
+.cache/
+
 # VS Code
 .vscode/
 
