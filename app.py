@@ -7,7 +7,15 @@ Multi-agent code review system using AutoGen + LangGraph
 import streamlit as st
 import os
 import warnings
+import logging
+
+# Suppress AutoGen warnings
+logging.getLogger("autogen.oai.client").setLevel(logging.ERROR)
+
+# Suppress other warnings
 warnings.filterwarnings('ignore', message='flaml.automl is not available')
+warnings.filterwarnings('ignore', category=UserWarning)
+
 from dotenv import load_dotenv
 from run_group_chat import CodeReviewChat
 from unified_analyzer import UnifiedCodeAnalyzer
