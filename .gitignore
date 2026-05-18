@@ -20,7 +20,6 @@ dist/
 
 # Project folders
 examples/
-tests/
 
 # IDEs
 .idea/
